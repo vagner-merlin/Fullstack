@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Diagnóstico - Boutique Web</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .check { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .test { padding: 15px; margin: 10px 0; background: #f8f9fa; border-left: 4px solid #007bff; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico Boutique Web</h1>
+        
+        <div class="test">
+            <h3>1. Verificar Servidores</h3>
+            <button onclick="testBackend()">Test Backend (Django)</button>
+            <button onclick="testFrontend()">Test Frontend (Vite)</button>
+        </div>
+
+        <div class="test">
+            <h3>2. Verificar LocalStorage</h3>
+            <button onclick="checkLocalStorage()">Ver LocalStorage</button>
+            <button onclick="clearLocalStorage()">Limpiar LocalStorage</button>
+        </div>
+
+        <div class="test">
+            <h3>3. Pruebas de Conexión</h3>
+            <button onclick="testCORS()">Test CORS</button>
+            <button onclick="testAPI()">Test API Usuarios</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = isError ? 'error' : 'check';
+            div.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+        }
+
+        async function testBackend() {
+            results.innerHTML = '';
+            log('🔍 Probando conexión al Backend Django...');
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/users/users/', {
+                    method: 'GET',
+                });
+                
+                if (response.ok) {
+                    log('✅ Backend Django está respondiendo correctamente');
+                    log(`Status: ${response.status}`);
+                } else {
+                    log(`⚠️ Backend respondió con error: ${response.status}`, true);
+                }
+            } catch (error) {
+                log(`❌ Error al conectar con Backend: ${error.message}`, true);
+                log('💡 Verifica que Django esté corriendo en http://127.0.0.1:8000/', true);
+            }
+        }
+
+        async function testFrontend() {
+            results.innerHTML = '';
+            log('🔍 Verificando Frontend Vite...');
+            log('✅ Este archivo se cargó correctamente desde Vite');
+            log(`URL actual: ${window.location.href}`);
+            log(`Puerto: ${window.location.port}`);
+        }
+
+        function checkLocalStorage() {
+            results.innerHTML = '';
+            log('🔍 Contenido de localStorage:');
+            
+            if (localStorage.length === 0) {
+                log('⚠️ localStorage está vacío');
+            } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    log(`${key}: ${value.substring(0, 50)}...`);
+                }
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear();
+            log('✅ localStorage limpiado');
+            log('🔄 Recarga la página para aplicar cambios');
+        }
+
+        async function testCORS() {
+            results.innerHTML = '';
+            log('🔍 Probando CORS...');
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/users/users/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                if (response.ok) {
+                    log('✅ CORS configurado correctamente');
+                } else {
+                    log(`⚠️ CORS Error - Status: ${response.status}`, true);
+                }
+            } catch (error) {
+                if (error.message.includes('CORS')) {
+                    log('❌ Error de CORS - Revisa settings.py en Django', true);
+                } else {
+                    log(`❌ Error: ${error.message}`, true);
+                }
+            }
+        }
+
+        async function testAPI() {
+            results.innerHTML = '';
+            log('🔍 Probando API de Usuarios...');
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/users/users/');
+                const data = await response.json();
+                
+                log('✅ API respondió correctamente');
+                log(`Total de usuarios: ${data.length}`);
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, true);
+            }
+        }
+
+        // Auto-test al cargar
+        window.onload = () => {
+            log('✅ Página de diagnóstico cargada');
+            log('👉 Haz clic en los botones para probar cada componente');
+        };
+    </script>
+</body>
+</html>

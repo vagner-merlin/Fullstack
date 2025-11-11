@@ -1,0 +1,408 @@
+// Mock data para productos
+import type { AdminProduct } from './admin/productAdminService';
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  discount?: number;
+  category: string;
+  images: string[];
+  sizes: string[];
+  colors: string[];
+  stock: number;
+  rating: number;
+  reviews: number;
+  isNew?: boolean;
+  isFeatured?: boolean;
+}
+
+/**
+ * Convierte AdminProduct a Product para la tienda
+ */
+const adminProductToProduct = (adminProduct: AdminProduct): Product => {
+  return {
+    id: adminProduct.id,
+    name: adminProduct.nombre,
+    description: adminProduct.descripcion || '',
+    price: adminProduct.precio,
+    discount: adminProduct.descuento || 0,
+    category: `categoria-${adminProduct.categoria_id}`,
+    images: adminProduct.imagen_principal 
+      ? [adminProduct.imagen_principal, ...(adminProduct.imagenes_adicionales || [])]
+      : ['https://via.placeholder.com/500'],
+    sizes: adminProduct.tallas_disponibles || [],
+    colors: adminProduct.colores_disponibles || [],
+    stock: adminProduct.stock_total,
+    rating: 4.5, // Por defecto
+    reviews: 0, // Por defecto
+    isNew: adminProduct.es_nuevo,
+    isFeatured: adminProduct.es_destacado,
+  };
+};
+
+/**
+ * Obtiene productos del admin (si existen) o usa mock data
+ */
+const getAdminProducts = (): Product[] => {
+  try {
+    const productsStr = localStorage.getItem('boutique_admin_products');
+    if (productsStr) {
+      const adminProducts: AdminProduct[] = JSON.parse(productsStr);
+      return adminProducts
+        .filter(p => p.activo) // Solo productos activos
+        .map(adminProductToProduct);
+    }
+  } catch (error) {
+    console.error('Error al cargar productos del admin:', error);
+  }
+  return [];
+};
+
+// Datos simulados de productos
+const mockProducts: Product[] = [
+  {
+    id: 1,
+    name: 'Vestido Elegante Rosa Pastel',
+    description: 'Vestido largo de corte elegante con detalles florales. Perfecto para ocasiones especiales.',
+    price: 899.00,
+    discount: 15,
+    category: 'vestidos',
+    images: [
+      'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500',
+      'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=500',
+    ],
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['Rosa', 'Beige', 'Blanco'],
+    stock: 15,
+    rating: 4.8,
+    reviews: 24,
+    isNew: true,
+    isFeatured: true,
+  },
+  {
+    id: 2,
+    name: 'Blusa de Seda Beige',
+    description: 'Blusa de seda premium con acabado elegante. Ideal para look profesional.',
+    price: 549.00,
+    category: 'blusas',
+    images: [
+      'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?w=500',
+      'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500',
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['Beige', 'Blanco', 'Negro'],
+    stock: 23,
+    rating: 4.6,
+    reviews: 18,
+    isFeatured: true,
+  },
+  {
+    id: 3,
+    name: 'Pantalón de Vestir Negro',
+    description: 'Pantalón de corte recto con tela de alta calidad. Elegancia y comodidad.',
+    price: 679.00,
+    discount: 10,
+    category: 'pantalones',
+    images: [
+      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500',
+      'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=500',
+    ],
+    sizes: ['26', '28', '30', '32', '34'],
+    colors: ['Negro', 'Gris', 'Azul Marino'],
+    stock: 30,
+    rating: 4.7,
+    reviews: 32,
+  },
+  {
+    id: 4,
+    name: 'Abrigo Largo Camel',
+    description: 'Abrigo elegante de lana con forro interior. Perfecto para temporada fría.',
+    price: 1299.00,
+    discount: 20,
+    category: 'abrigos',
+    images: [
+      'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=500',
+      'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500',
+    ],
+    sizes: ['S', 'M', 'L'],
+    colors: ['Camel', 'Beige', 'Negro'],
+    stock: 8,
+    rating: 4.9,
+    reviews: 41,
+    isNew: true,
+  },
+  {
+    id: 5,
+    name: 'Falda Midi Plisada',
+    description: 'Falda midi con pliegues delicados. Versátil y femenina.',
+    price: 459.00,
+    category: 'faldas',
+    images: [
+      'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500',
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=500',
+    ],
+    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    colors: ['Rosa', 'Negro', 'Beige', 'Azul'],
+    stock: 20,
+    rating: 4.5,
+    reviews: 15,
+  },
+  {
+    id: 6,
+    name: 'Suéter de Cashmere',
+    description: 'Suéter suave de cashmere premium. Lujo y confort en una prenda.',
+    price: 899.00,
+    category: 'sueteres',
+    images: [
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500',
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500',
+    ],
+    sizes: ['S', 'M', 'L'],
+    colors: ['Beige', 'Gris', 'Rosa', 'Negro'],
+    stock: 12,
+    rating: 5.0,
+    reviews: 28,
+    isFeatured: true,
+  },
+  {
+    id: 7,
+    name: 'Camisa de Lino Blanca',
+    description: 'Camisa de lino natural. Fresca y elegante para cualquier ocasión.',
+    price: 399.00,
+    category: 'camisas',
+    images: [
+      'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500',
+      'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=500',
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['Blanco', 'Beige', 'Azul Claro'],
+    stock: 25,
+    rating: 4.4,
+    reviews: 19,
+    isNew: true,
+  },
+  {
+    id: 8,
+    name: 'Blazer Estructurado',
+    description: 'Blazer de corte impecable con hombros estructurados. Poder y elegancia.',
+    price: 1099.00,
+    discount: 15,
+    category: 'blazers',
+    images: [
+      'https://images.unsplash.com/photo-1591369822096-ffd140ec948f?w=500',
+      'https://images.unsplash.com/photo-1594633313593-bab3825d0caf?w=500',
+    ],
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['Negro', 'Beige', 'Gris'],
+    stock: 10,
+    rating: 4.8,
+    reviews: 35,
+    isFeatured: true,
+  },
+  {
+    id: 9,
+    name: 'Jeans Skinny Azul',
+    description: 'Jeans de mezclilla premium con corte skinny. Clásico renovado.',
+    price: 599.00,
+    category: 'pantalones',
+    images: [
+      'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500',
+      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500',
+    ],
+    sizes: ['24', '26', '28', '30', '32'],
+    colors: ['Azul', 'Negro', 'Gris'],
+    stock: 35,
+    rating: 4.6,
+    reviews: 42,
+  },
+  {
+    id: 10,
+    name: 'Top de Encaje Rosa',
+    description: 'Top delicado con detalles de encaje. Romántico y sofisticado.',
+    price: 429.00,
+    category: 'blusas',
+    images: [
+      'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=500',
+      'https://images.unsplash.com/photo-1562572159-4efc207f5aff?w=500',
+    ],
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['Rosa', 'Blanco', 'Negro'],
+    stock: 18,
+    rating: 4.7,
+    reviews: 21,
+    isNew: true,
+  },
+  {
+    id: 11,
+    name: 'Vestido Midi Floral',
+    description: 'Vestido midi con estampado floral delicado. Femenino y elegante.',
+    price: 749.00,
+    category: 'vestidos',
+    images: [
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=500',
+      'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500',
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['Rosa', 'Azul', 'Beige'],
+    stock: 14,
+    rating: 4.9,
+    reviews: 30,
+  },
+  {
+    id: 12,
+    name: 'Cardigan Oversize Beige',
+    description: 'Cardigan de punto suave con fit relajado. Comodidad y estilo.',
+    price: 679.00,
+    discount: 10,
+    category: 'sueteres',
+    images: [
+      'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500',
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500',
+    ],
+    sizes: ['S/M', 'L/XL'],
+    colors: ['Beige', 'Gris', 'Crema'],
+    stock: 22,
+    rating: 4.5,
+    reviews: 17,
+  },
+];
+
+export interface ProductFilters {
+  search?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  limit?: number;
+  sortBy?: 'price_asc' | 'price_desc' | 'newest' | 'popular';
+}
+
+export interface ProductsResponse {
+  products: Product[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+// Simular delay de API
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Servicio de productos
+export const productService = {
+  // Obtener productos con filtros
+  getProducts: async (filters: ProductFilters = {}): Promise<ProductsResponse> => {
+    await delay(500); // Simular latencia de red
+
+    // Intentar cargar productos del admin primero, si no hay usar mock
+    const adminProducts = getAdminProducts();
+    const allProducts = adminProducts.length > 0 ? adminProducts : mockProducts;
+    
+    let filteredProducts = [...allProducts];
+
+    // Filtro de búsqueda
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filteredProducts = filteredProducts.filter(p =>
+        p.name.toLowerCase().includes(searchLower) ||
+        p.description.toLowerCase().includes(searchLower) ||
+        p.category.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Filtro de categoría
+    if (filters.category && filters.category !== 'todos') {
+      filteredProducts = filteredProducts.filter(p => p.category === filters.category);
+    }
+
+    // Filtro de precio mínimo
+    if (filters.minPrice !== undefined) {
+      filteredProducts = filteredProducts.filter(p => {
+        const finalPrice = p.discount ? p.price * (1 - p.discount / 100) : p.price;
+        return finalPrice >= filters.minPrice!;
+      });
+    }
+
+    // Filtro de precio máximo
+    if (filters.maxPrice !== undefined) {
+      filteredProducts = filteredProducts.filter(p => {
+        const finalPrice = p.discount ? p.price * (1 - p.discount / 100) : p.price;
+        return finalPrice <= filters.maxPrice!;
+      });
+    }
+
+    // Ordenamiento
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case 'price_asc':
+          filteredProducts.sort((a, b) => {
+            const priceA = a.discount ? a.price * (1 - a.discount / 100) : a.price;
+            const priceB = b.discount ? b.price * (1 - b.discount / 100) : b.price;
+            return priceA - priceB;
+          });
+          break;
+        case 'price_desc':
+          filteredProducts.sort((a, b) => {
+            const priceA = a.discount ? a.price * (1 - a.discount / 100) : a.price;
+            const priceB = b.discount ? b.price * (1 - b.discount / 100) : b.price;
+            return priceB - priceA;
+          });
+          break;
+        case 'newest':
+          filteredProducts.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
+          break;
+        case 'popular':
+          filteredProducts.sort((a, b) => b.rating - a.rating);
+          break;
+      }
+    }
+
+    // Paginación
+    const page = filters.page || 1;
+    const limit = filters.limit || 12;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+    return {
+      products: paginatedProducts,
+      total: filteredProducts.length,
+      page,
+      totalPages: Math.ceil(filteredProducts.length / limit),
+    };
+  },
+
+  // Obtener producto por ID
+  getProductById: async (id: number): Promise<Product | null> => {
+    await delay(300);
+    const adminProducts = getAdminProducts();
+    const allProducts = adminProducts.length > 0 ? adminProducts : mockProducts;
+    return allProducts.find(p => p.id === id) || null;
+  },
+
+  // Obtener categorías disponibles
+  getCategories: async (): Promise<string[]> => {
+    await delay(200);
+    const adminProducts = getAdminProducts();
+    const allProducts = adminProducts.length > 0 ? adminProducts : mockProducts;
+    const categories = [...new Set(allProducts.map(p => p.category))];
+    return ['todos', ...categories];
+  },
+
+  // Obtener productos destacados
+  getFeaturedProducts: async (): Promise<Product[]> => {
+    await delay(300);
+    const adminProducts = getAdminProducts();
+    const allProducts = adminProducts.length > 0 ? adminProducts : mockProducts;
+    return allProducts.filter(p => p.isFeatured);
+  },
+
+  // Obtener productos nuevos
+  getNewProducts: async (): Promise<Product[]> => {
+    await delay(300);
+    const adminProducts = getAdminProducts();
+    const allProducts = adminProducts.length > 0 ? adminProducts : mockProducts;
+    return allProducts.filter(p => p.isNew);
+  },
+};
