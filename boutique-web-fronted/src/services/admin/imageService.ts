@@ -118,7 +118,8 @@ export const uploadImage = async (imageData: CreateProductImageData): Promise<Pr
     formData.append('es_principal', imageData.es_principal.toString());
     formData.append('Producto_categoria', imageData.Producto_categoria.toString());
 
-    const response = await fetch(`${API_URL}/api/productos/imagenes/`, {
+    // Usar la nueva API dedicada para upload a S3
+    const response = await fetch(`${API_URL}/api/productos/upload-imagen/`, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${token}`,
@@ -130,12 +131,15 @@ export const uploadImage = async (imageData: CreateProductImageData): Promise<Pr
     if (!response.ok) {
       const errorData = await response.json();
       console.error('❌ Error del servidor:', errorData);
-      throw new Error(errorData.message || 'Error al subir imagen');
+      throw new Error(errorData.error || 'Error al subir imagen');
     }
 
     const data = await response.json();
-    console.log('✅ Imagen subida:', data);
-    return data;
+    console.log('✅ Imagen subida exitosamente a S3:', data);
+    console.log('📍 URL de la imagen:', data.imagen?.imagen_url);
+    console.log('🔧 Debug info:', data.debug);
+    
+    return data.imagen;
   } catch (error) {
     console.error('❌ Error al subir imagen:', error);
     throw error;
@@ -224,6 +228,37 @@ export const setAsPrincipal = async (id: number): Promise<ProductImage> => {
     return await updateImage(id, { es_principal: true });
   } catch (error) {
     console.error('❌ Error al marcar imagen como principal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Verifica la configuración de S3 en el backend
+ */
+export const checkS3Configuration = async (): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch(`${API_URL}/api/productos/upload-imagen/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Token ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al verificar configuración de S3');
+    }
+
+    const data = await response.json();
+    console.log('🔧 Configuración S3:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error al verificar S3:', error);
     throw error;
   }
 };

@@ -7,6 +7,7 @@ import {
   updateImage,
   deleteImage,
   setAsPrincipal,
+  checkS3Configuration,
   type ProductImage
 } from '../../services/admin/imageService';
 import { getAllVariants, type ProductVariant } from '../../services/admin/variantService';
@@ -21,6 +22,7 @@ export const ImagesPage = () => {
   const [editingImage, setEditingImage] = useState<ProductImage | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [s3Config, setS3Config] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -31,6 +33,7 @@ export const ImagesPage = () => {
 
   useEffect(() => {
     loadData();
+    checkS3Config();
   }, []);
 
   const loadData = async () => {
@@ -48,6 +51,22 @@ export const ImagesPage = () => {
       showToast.error('Error al cargar imágenes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkS3Config = async () => {
+    try {
+      const config = await checkS3Configuration();
+      setS3Config(config);
+      console.log('🔧 Configuración S3 verificada:', config);
+      
+      if (config.storage_backend === 'S3Boto3Storage') {
+        console.log('✅ S3 está configurado correctamente');
+      } else {
+        console.warn('⚠️ S3 no está configurado, usando:', config.storage_backend);
+      }
+    } catch (error) {
+      console.error('Error al verificar S3:', error);
     }
   };
 
@@ -207,8 +226,24 @@ export const ImagesPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Imágenes de Productos</h2>
-          <p className="text-gray-600 mt-1">Gestiona las imágenes de tus variantes de productos</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-bold text-gray-900">Imágenes de Productos</h2>
+            {s3Config && (
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                s3Config.storage_backend === 'S3Boto3Storage'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {s3Config.storage_backend === 'S3Boto3Storage' ? '☁️ S3 Activo' : '💾 Local'}
+              </span>
+            )}
+          </div>
+          <p className="text-gray-600 mt-1">
+            Gestiona las imágenes de tus variantes de productos
+            {s3Config?.storage_backend === 'S3Boto3Storage' && (
+              <span className="text-green-600 font-medium"> • Almacenamiento en AWS S3</span>
+            )}
+          </p>
         </div>
         <button
           onClick={openCreateModal}

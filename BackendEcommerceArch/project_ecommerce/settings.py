@@ -51,25 +51,6 @@ INSTALLED_APPS = [
     'storages',
 ]
 
-# AWS S3 Configuration from environment variables
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
-AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
-AWS_LOCATION = 'media'  # Carpeta dentro del bucket
-AWS_QUERYSTRING_AUTH = False  # URLs públicas sin query params
-AWS_S3_SIGNATURE_VERSION = 's3v4'
-
-# Configuración de almacenamiento
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -185,3 +166,44 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ============================================================
+# AWS S3 CONFIGURATION
+# ============================================================
+# Configuración para almacenar archivos multimedia en Amazon S3
+
+# Credenciales AWS (cargadas desde .env por seguridad)
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+
+# Configuración del bucket S3
+AWS_S3_FILE_OVERWRITE = False  # No sobrescribir archivos con el mismo nombre
+AWS_DEFAULT_ACL = None  # No establecer ACL por defecto (usar permisos del bucket)
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',  # Cache de 24 horas
+}
+
+# Configuración de rutas y URLs
+AWS_LOCATION = 'media'  # Carpeta dentro del bucket para archivos
+AWS_QUERYSTRING_AUTH = False  # URLs públicas sin parámetros de autenticación
+AWS_S3_SIGNATURE_VERSION = 's3v4'  # Versión de firma requerida
+
+# URL base para acceder a archivos multimedia
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
+
+# ============================================================
+# STORAGES CONFIGURATION (Django 4.2+)
+# ============================================================
+# Configuración moderna de almacenamiento para Django 5.2+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+

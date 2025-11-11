@@ -4,6 +4,7 @@ from .api import (
     ProductoViewSet, CategoriaViewSet, ProductoCategoriaViewSet,
     ReseñaViewSet, ImagenProductoViewSet, ItemPedidoViewSet, ItemComprasViewSet
 )
+from .upload_api import ImageUploadAPIView
 
 router = DefaultRouter()
 router.register(r'productos', ProductoViewSet, basename='producto')
@@ -16,4 +17,5 @@ router.register(r'items-compras', ItemComprasViewSet, basename='item-compras')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('upload-imagen/', ImageUploadAPIView.as_view(), name='upload-imagen'),
 ]
