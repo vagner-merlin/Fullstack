@@ -22,7 +22,7 @@ class ProductoCategoria(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     color = models.CharField(max_length=50)
     talla = models.CharField(max_length=50)
-    capacidad = models.CharField(max_length=50)
+    capacidad = models.CharField(max_length=50 , null=True, blank=True)
     precio_variante = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.IntegerField()

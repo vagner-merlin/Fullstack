@@ -15,7 +15,9 @@ import {
   X,
   LogOut,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Palette,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -33,6 +35,8 @@ const navItems: NavItem[] = [
   { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/admin/ai-analytics', icon: Sparkles, label: 'IA Analytics' },
   { path: '/admin/products', icon: Package, label: 'Productos' },
+  { path: '/admin/variants', icon: Palette, label: 'Variantes' },
+  { path: '/admin/images', icon: ImageIcon, label: 'Imágenes' },
   { path: '/admin/categories', icon: Tag, label: 'Categorías' },
   { path: '/admin/orders', icon: ShoppingBag, label: 'Pedidos' },
   { path: '/admin/providers', icon: Truck, label: 'Proveedores' },

@@ -27,9 +27,17 @@ class CategoriaBasicaSerializer(serializers.ModelSerializer):
 
 class ImagenProductoSerializer(serializers.ModelSerializer):
     """Serializer para imágenes de productos"""
+    imagen_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = Imagen_Producto
-        fields = ['id', 'Producto_url', 'texto', 'es_principal', 'Producto_categoria']
+        fields = ['id', 'imagen', 'imagen_url', 'texto', 'es_principal', 'Producto_categoria']
+    
+    def get_imagen_url(self, obj):
+        """Obtener URL completa de la imagen en S3"""
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 class ProductoBasicoSerializer(serializers.ModelSerializer):
     """Serializer básico para productos"""

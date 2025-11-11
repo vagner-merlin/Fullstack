@@ -25,6 +25,8 @@ import CompleteProfilePage from '../pages/auth/CompleteProfilePage';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { DashboardPage } from '../pages/admin/DashboardPage';
 import { ProductsPage } from '../pages/admin/ProductsPage';
+import { VariantsPage } from '../pages/admin/VariantsPage';
+import { ImagesPage } from '../pages/admin/ImagesPage';
 import { CategoriesPage } from '../pages/admin/CategoriesPage';
 import { OrdersPageAdmin } from '../pages/admin/OrdersPageAdmin';
 import { ProvidersPage } from '../pages/admin/ProvidersPage';
@@ -86,6 +88,8 @@ const AppRouter = () => {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="ai-analytics" element={<AIAnalyticsPage />} />
                 <Route path="products" element={<ProductsPage />} />
+                <Route path="variants" element={<VariantsPage />} />
+                <Route path="images" element={<ImagesPage />} />
                 <Route path="categories" element={<CategoriesPage />} />
                 <Route path="orders" element={<OrdersPageAdmin />} />
                 <Route path="providers" element={<ProvidersPage />} />
