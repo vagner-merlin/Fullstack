@@ -17,14 +17,26 @@ const ProductDetailPage = () => {
 
   useEffect(() => {
     const loadProduct = async () => {
-      if (!id) return;
+      if (!id) {
+        console.error('❌ ProductDetailPage: No hay ID de producto en params');
+        return;
+      }
       
+      console.log(`📄 ProductDetailPage: Cargando producto con ID: ${id}`);
       setIsLoading(true);
       try {
         const data = await productService.getProductById(Number(id));
+        console.log('✅ ProductDetailPage: Producto cargado:', data);
         setProduct(data);
+        
+        if (!data) {
+          console.error('⚠️ ProductDetailPage: El servicio devolvió null');
+        }
       } catch (error) {
-        console.error('Error loading product:', error);
+        console.error('❌ Error loading product:', error);
+        if (error instanceof Error) {
+          console.error('💬 Error details:', error.message);
+        }
       } finally {
         setIsLoading(false);
       }

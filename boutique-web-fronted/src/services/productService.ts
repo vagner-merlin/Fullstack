@@ -105,6 +105,9 @@ interface ProductsResponse {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Imagen placeholder SVG como data URL
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" font-size="24" fill="%23999" text-anchor="middle" dy=".3em" font-family="Arial"%3EImagen no disponible%3C/text%3E%3C/svg%3E';
+
 export const productService = {
   // Obtener productos desde Django
   getProducts: async (filters: ProductFilters = {}): Promise<ProductsResponse> => {
@@ -223,7 +226,7 @@ export const productService = {
           price: primeraVariante ? parseFloat(primeraVariante.precio_unitario) : 0,
           discount: 0, // El backend no tiene descuento por ahora
           category: categoria,
-          images: todasImagenes.length > 0 ? todasImagenes : ['/placeholder-product.jpg'],
+          images: todasImagenes.length > 0 ? todasImagenes : [PLACEHOLDER_IMAGE],
           sizes: tallas,
           colors: colores,
           stock: stockTotal,
@@ -268,12 +271,23 @@ export const productService = {
   // Obtener producto por ID
   getProductById: async (id: number): Promise<Product | null> => {
     try {
-      const response = await fetch(`${API_URL}/api/productos/${id}/`, {
+      console.log(`🔍 ProductService: Buscando producto con ID: ${id}`);
+      console.log(`🔗 URL: ${API_URL}/api/productos/productos/${id}/`);
+      
+      const response = await fetch(`${API_URL}/api/productos/productos/${id}/`, {
         headers: { 'Content-Type': 'application/json' },
       });
       
+      console.log(`📡 Respuesta recibida:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+      
       if (!response.ok) {
-        console.error('Producto no encontrado:', id);
+        console.error(`❌ Producto no encontrado (${response.status}):`, id);
+        const errorText = await response.text();
+        console.error('📄 Contenido del error:', errorText);
         return null;
       }
       
@@ -283,13 +297,32 @@ export const productService = {
       // El backend retorna { success: true, producto: {...} }
       const prod = data.producto || data;
       
+      console.log('🔍 Estructura del producto:', {
+        id: prod.id,
+        nombre: prod.nombre,
+        variantes: prod.variantes?.length || 0,
+        categorias: prod.categorias?.length || 0,
+      });
+      
+      if (!prod.variantes || prod.variantes.length === 0) {
+        console.warn('⚠️ El producto no tiene variantes');
+      }
+      
       // Obtener la primera variante para obtener precio e imágenes
       const primeraVariante = prod.variantes && prod.variantes.length > 0 ? prod.variantes[0] : null;
       
       // Obtener todas las imágenes de todas las variantes
       const todasImagenes: string[] = [];
       if (prod.variantes) {
-        prod.variantes.forEach((variante: any) => {
+        prod.variantes.forEach((variante: any, idx: number) => {
+          console.log(`  🎨 Variante ${idx + 1}:`, {
+            color: variante.color,
+            talla: variante.talla,
+            precio: variante.precio_unitario,
+            stock: variante.stock,
+            imagenes: variante.imagenes?.length || 0,
+          });
+          
           if (variante.imagenes && Array.isArray(variante.imagenes)) {
             variante.imagenes.forEach((img: any) => {
               // Priorizar imagen_url (desde S3), si no existe usar imagen
@@ -310,6 +343,8 @@ export const productService = {
         });
       }
       
+      console.log(`📸 Total imágenes encontradas: ${todasImagenes.length}`);
+      
       // Obtener colores y tallas únicos
       const colores = prod.variantes 
         ? [...new Set(prod.variantes.map((v: any) => v.color).filter(Boolean))] as string[]
@@ -328,14 +363,14 @@ export const productService = {
         ? prod.categorias[0].nombre 
         : 'Sin categoría';
       
-      return {
+      const resultado = {
         id: prod.id,
         name: prod.nombre,
         description: prod.descripcion || '',
         price: primeraVariante ? primeraVariante.precio_unitario : 0,
         discount: 0,
         category: categoria,
-        images: todasImagenes.length > 0 ? todasImagenes : ['/placeholder-product.jpg'],
+        images: todasImagenes.length > 0 ? todasImagenes : [PLACEHOLDER_IMAGE],
         sizes: tallas,
         colors: colores,
         stock: stockTotal,
@@ -344,8 +379,15 @@ export const productService = {
         isNew: false,
         isFeatured: false,
       };
+      
+      console.log('✅ Producto mapeado:', resultado);
+      return resultado;
     } catch (error) {
-      console.error('Error en getProductById:', error);
+      console.error('❌ Error en getProductById:', error);
+      if (error instanceof Error) {
+        console.error('💬 Mensaje:', error.message);
+        console.error('📍 Stack:', error.stack);
+      }
       return null;
     }
   },

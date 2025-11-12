@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Carrito, ItemCarrito
-from app_productos.models import Producto, ProductoCategoria
+from app_productos.models import Producto, ProductoCategoria, Imagen_Producto
 from app_Cliente.models import Cliente
 
 class ProductoBasicoSerializer(serializers.ModelSerializer):
@@ -10,46 +10,75 @@ class ProductoBasicoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'descripcion', 'peso']
 
 class ProductoCategoriaBasicoSerializer(serializers.ModelSerializer):
-    """Serializer para mostrar variante del producto"""
-    producto = ProductoBasicoSerializer(read_only=True)
-    
-    class Meta:
-        model = ProductoCategoria
-        fields = ['id', 'producto', 'color', 'talla', 'capacidad', 'precio_unitario', 'stock']
-
-class ItemCarritoSerializer(serializers.ModelSerializer):
-    """Serializer completo para items del carrito"""
-    variante_info = ProductoCategoriaBasicoSerializer(source='producto_variante', read_only=True)
-    subtotal = serializers.SerializerMethodField()
+    """Serializer para mostrar variante del producto con todas sus imágenes"""
+    producto_info = ProductoBasicoSerializer(source='producto', read_only=True)
+    categoria_info = serializers.SerializerMethodField()
+    imagenes = serializers.SerializerMethodField()
     imagen_principal = serializers.SerializerMethodField()
     
     class Meta:
+        model = ProductoCategoria
+        fields = [
+            'id', 'producto', 'categoria', 'color', 'talla', 'capacidad', 
+            'precio_unitario', 'stock', 'producto_info', 'categoria_info',
+            'imagenes', 'imagen_principal'
+        ]
+    
+    def get_categoria_info(self, obj):
+        """Obtiene nombre de la categoría"""
+        if obj.categoria:
+            return {
+                'id': obj.categoria.id,
+                'nombre': obj.categoria.nombre
+            }
+        return None
+    
+    def get_imagenes(self, obj):
+        """Obtiene todas las imágenes de la variante"""
+        imagenes = Imagen_Producto.objects.filter(Producto_categoria=obj)
+        result = []
+        for img in imagenes:
+            url = img.imagen.url if img.imagen else None
+            if url:
+                result.append({
+                    'id': img.id,
+                    'url': url,
+                    'texto': img.texto,
+                    'es_principal': img.es_principal
+                })
+        return result
+    
+    def get_imagen_principal(self, obj):
+        """Obtiene la imagen principal de la variante"""
+        try:
+            imagen = Imagen_Producto.objects.filter(
+                Producto_categoria=obj,
+                es_principal=True
+            ).first()
+            if imagen and imagen.imagen:
+                return imagen.imagen.url
+            else:
+                # Si no hay imagen principal, tomar la primera disponible
+                imagen = Imagen_Producto.objects.filter(
+                    Producto_categoria=obj
+                ).first()
+                return imagen.imagen.url if imagen and imagen.imagen else None
+        except:
+            return None
+
+class ItemCarritoSerializer(serializers.ModelSerializer):
+    """Serializer completo para items del carrito con toda la info del producto"""
+    variante_info = ProductoCategoriaBasicoSerializer(source='producto_variante', read_only=True)
+    subtotal = serializers.SerializerMethodField()
+    
+    class Meta:
         model = ItemCarrito
-        fields = ['id', 'carrito', 'producto_variante', 'cantidad', 'variante_info', 'subtotal', 'imagen_principal']
+        fields = ['id', 'carrito', 'producto_variante', 'cantidad', 'variante_info', 'subtotal']
         read_only_fields = ['carrito']
     
     def get_subtotal(self, obj):
         """Calcula el subtotal del item"""
-        return obj.cantidad * obj.producto_variante.precio_unitario
-    
-    def get_imagen_principal(self, obj):
-        """Obtiene la imagen principal de la variante"""
-        from app_productos.models import Imagen_Producto
-        try:
-            imagen = Imagen_Producto.objects.filter(
-                Producto_categoria=obj.producto_variante,
-                es_principal=True
-            ).first()
-            if imagen:
-                return imagen.imagen_url or imagen.imagen.url if imagen.imagen else None
-            else:
-                # Si no hay imagen principal, tomar la primera disponible
-                imagen = Imagen_Producto.objects.filter(
-                    Producto_categoria=obj.producto_variante
-                ).first()
-                return imagen.imagen_url or imagen.imagen.url if imagen and imagen.imagen else None
-        except:
-            return None
+        return float(obj.cantidad * obj.producto_variante.precio_unitario)
     
     def validate_cantidad(self, value):
         """Valida que la cantidad sea positiva"""
@@ -75,15 +104,16 @@ class CarritoSerializer(serializers.ModelSerializer):
         read_only_fields = ['cliente', 'fecha_creacion', 'fecha_modificacion']
     
     def get_total_items(self, obj):
-        """Cuenta total de items en el carrito"""
-        return obj.items.count()
+        """Cuenta total de items en el carrito (suma de cantidades)"""
+        total = sum(item.cantidad for item in obj.items.all())
+        return total
     
     def get_total_precio(self, obj):
         """Calcula el precio total del carrito"""
         total = 0
         for item in obj.items.all():
-            total += item.cantidad * item.producto_variante.precio_unitario
-        return total
+            total += float(item.cantidad * item.producto_variante.precio_unitario)
+        return float(total)
 
 class AgregarItemCarritoSerializer(serializers.Serializer):
     """Serializer para agregar items al carrito"""

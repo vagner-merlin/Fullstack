@@ -1,4 +1,4 @@
-# 🛒 API del Carrito de Compras
+# 🛒 API del Carrito de Compras - ACTUALIZADO ✨
 
 ## 🔐 Autenticación
 **TODAS las APIs requieren autenticación por token**
@@ -13,11 +13,12 @@ Content-Type: application/json
 
 ## 📋 APIs Disponibles
 
-### 1. **Obtener mi carrito**
+### 1. **Obtener mi carrito** ⭐ RECOMENDADO
 - **URL**: `GET /api/carrito/carritos/mi_carrito/`
 - **Método**: GET
 - **Autenticación**: ✅ Requerida
-- **Descripción**: Obtiene el carrito del usuario autenticado (lo crea si no existe)
+- **Descripción**: Obtiene el carrito del usuario autenticado con **TODA la información del producto** (imágenes, precios, categoría, etc.)
+- **Ventaja**: ✨ **UNA sola llamada API** - devuelve todo lo que necesitas
 
 #### Respuesta exitosa (200):
 ```json
@@ -32,43 +33,45 @@ Content-Type: application/json
             {
                 "id": 1,
                 "carrito": 1,
-                "Producto": 1,
+                "producto_variante": 1,
                 "cantidad": 2,
-                "producto_info": {
+                "subtotal": 51.98,
+                "variante_info": {
                     "id": 1,
-                    "producto": {
+                    "color": "Azul",
+                    "talla": "M",
+                    "precio_unitario": "25.99",
+                    "stock": 50,
+                    "producto_info": {
                         "id": 1,
                         "nombre": "Camiseta Básica",
                         "descripcion": "Camiseta 100% algodón",
                         "peso": "0.25"
                     },
-                    "color": "Azul",
-                    "talla": "M",
-                    "capacidad": "",
-                    "precio_unitario": "25.99",
-                    "stock": 50
-                },
-                "subtotal": "51.98"
+                    "categoria_info": {
+                        "id": 1,
+                        "nombre": "Ropa"
+                    },
+                    "imagen_principal": "https://storage.example.com/imagen1.jpg",
+                    "imagenes": [
+                        {
+                            "id": 1,
+                            "url": "https://storage.example.com/imagen1.jpg",
+                            "texto": "Vista frontal",
+                            "es_principal": true
+                        },
+                        {
+                            "id": 2,
+                            "url": "https://storage.example.com/imagen2.jpg",
+                            "texto": "Vista lateral",
+                            "es_principal": false
+                        }
+                    ]
+                }
             }
         ],
-        "total_items": 1,
-        "total_precio": "51.98"
-    }
-}
-```
-
-#### Carrito vacío (200):
-```json
-{
-    "success": true,
-    "carrito": {
-        "id": 1,
-        "cliente": 1,
-        "fecha_creacion": "2025-11-11T10:30:00Z",
-        "fecha_modificacion": "2025-11-11T10:30:00Z",
-        "items": [],
-        "total_items": 0,
-        "total_precio": "0.00"
+        "total_items": 2,
+        "total_precio": 51.98
     }
 }
 ```
@@ -96,36 +99,10 @@ Content-Type: application/json
     "item": {
         "id": 2,
         "carrito": 1,
-        "Producto": 1,
+        "producto_variante": 1,
         "cantidad": 2,
-        "producto_info": {
-            "id": 1,
-            "producto": {
-                "id": 1,
-                "nombre": "Camiseta Básica",
-                "descripcion": "Camiseta 100% algodón",
-                "peso": "0.25"
-            },
-            "color": "Azul",
-            "talla": "M",
-            "capacidad": "",
-            "precio_unitario": "25.99",
-            "stock": 50
-        },
-        "subtotal": "51.98"
-    }
-}
-```
-
-#### Respuesta - Cantidad actualizada (200):
-```json
-{
-    "success": true,
-    "message": "Cantidad actualizada en el carrito",
-    "item": {
-        "id": 1,
-        "cantidad": 4,
-        "subtotal": "103.96"
+        "subtotal": 51.98,
+        "variante_info": {...}
     }
 }
 ```
@@ -160,30 +137,10 @@ Content-Type: application/json
     "message": "Cantidad actualizada",
     "item": {
         "id": 1,
-        "carrito": 1,
-        "Producto": 1,
         "cantidad": 3,
-        "producto_info": {
-            "id": 1,
-            "producto": {
-                "id": 1,
-                "nombre": "Camiseta Básica"
-            },
-            "color": "Azul",
-            "talla": "M",
-            "precio_unitario": "25.99",
-            "stock": 50
-        },
-        "subtotal": "77.97"
+        "subtotal": 77.97,
+        "variante_info": {...}
     }
-}
-```
-
-#### Error - Item no encontrado (404):
-```json
-{
-    "success": false,
-    "message": "Item no encontrado en tu carrito"
 }
 ```
 
@@ -215,7 +172,6 @@ Content-Type: application/json
 - **URL**: `DELETE /api/carrito/carritos/vaciar_carrito/`
 - **Método**: DELETE
 - **Autenticación**: ✅ Requerida
-- **Body**: No requiere datos
 
 #### Respuesta exitosa (200):
 ```json
@@ -227,48 +183,63 @@ Content-Type: application/json
 
 ---
 
-## 🔗 Cómo se generan las URLs
+## ✨ Información Completa en Carrito
 
-### URLs automáticas del ViewSet:
-El router genera estas URLs estándar (que NO necesitas usar):
-```
-GET    /api/carrito/carritos/          # Listar carritos
-POST   /api/carrito/carritos/          # Crear carrito
-GET    /api/carrito/carritos/{id}/     # Obtener carrito específico
-PUT    /api/carrito/carritos/{id}/     # Actualizar carrito
-DELETE /api/carrito/carritos/{id}/     # Eliminar carrito
-```
+### **NO NECESITAS `/api/productos/productos/{id}/`**
 
-### URLs personalizadas (las que SÍ usas):
-```
-GET    /api/carrito/carritos/mi_carrito/      # @action(detail=False, methods=['get'])
-POST   /api/carrito/carritos/agregar_item/    # @action(detail=False, methods=['post'])
-PUT    /api/carrito/carritos/actualizar_item/ # @action(detail=False, methods=['put'])
-DELETE /api/carrito/carritos/eliminar_item/   # @action(detail=False, methods=['delete'])
-DELETE /api/carrito/carritos/vaciar_carrito/  # @action(detail=False, methods=['delete'])
+El carrito devuelve TODA la información del producto:
+
+```json
+{
+    "variante_info": {
+        "id": 1,
+        "producto": 1,
+        "categoria": 1,
+        "color": "Azul",
+        "talla": "M",
+        "capacidad": "",
+        "precio_unitario": "25.99",
+        "stock": 50,
+        
+        // Información del producto
+        "producto_info": {
+            "id": 1,
+            "nombre": "Camiseta Básica",
+            "descripcion": "Camiseta 100% algodón",
+            "peso": "0.25"
+        },
+        
+        // Categoría
+        "categoria_info": {
+            "id": 1,
+            "nombre": "Ropa"
+        },
+        
+        // IMÁGENES PRINCIPALES Y SECUNDARIAS
+        "imagen_principal": "https://storage.example.com/imagen1.jpg",
+        "imagenes": [
+            {
+                "id": 1,
+                "url": "https://storage.example.com/imagen1.jpg",
+                "texto": "Vista frontal",
+                "es_principal": true
+            },
+            {
+                "id": 2,
+                "url": "https://storage.example.com/imagen2.jpg",
+                "texto": "Vista lateral",
+                "es_principal": false
+            }
+        ]
+    }
+}
 ```
 
 ---
 
-## 🚀 Flujo de trabajo típico
+## 🚀 Uso en Frontend
 
-### 1. **Frontend - Agregar producto**
-```javascript
-// JavaScript ejemplo
-const response = await fetch('/api/carrito/carritos/agregar_item/', {
-    method: 'POST',
-    headers: {
-        'Authorization': 'Token ' + userToken,
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-        producto_variante_id: 1,
-        cantidad: 2
-    })
-});
-```
-
-### 2. **Frontend - Ver carrito**
+### JavaScript - Ver carrito completo:
 ```javascript
 const response = await fetch('/api/carrito/carritos/mi_carrito/', {
     method: 'GET',
@@ -276,62 +247,29 @@ const response = await fetch('/api/carrito/carritos/mi_carrito/', {
         'Authorization': 'Token ' + userToken,
     }
 });
-```
+const carrito = await response.json();
 
-### 3. **Frontend - Actualizar cantidad**
-```javascript
-const response = await fetch('/api/carrito/carritos/actualizar_item/', {
-    method: 'PUT',
-    headers: {
-        'Authorization': 'Token ' + userToken,
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-        item_id: 1,
-        cantidad: 5
-    })
+// TODO está aquí - sin llamadas adicionales
+carrito.carrito.items.forEach(item => {
+    console.log(item.variante_info.producto_info.nombre);       // Nombre
+    console.log(item.variante_info.categoria_info.nombre);      // Categoría
+    console.log(item.variante_info.imagen_principal);           // Imagen principal
+    console.log(item.variante_info.imagenes);                   // Todas las imágenes
+    console.log(item.variante_info.color, item.variante_info.talla); // Variante
+    console.log(item.subtotal);                                 // Subtotal
 });
-```
-
----
-
-## ❌ Errores comunes
-
-### Error 401 - No autenticado:
-```json
-{
-    "detail": "Authentication credentials were not provided."
-}
-```
-
-### Error 404 - Cliente no encontrado:
-```json
-{
-    "success": false,
-    "message": "Cliente no encontrado"
-}
-```
-
-### Error 400 - Datos inválidos:
-```json
-{
-    "success": false,
-    "message": "Datos inválidos",
-    "errors": {
-        "cantidad": ["La cantidad debe ser mayor a 0"]
-    }
-}
 ```
 
 ---
 
 ## 📝 Notas importantes
 
-1. **Un carrito por cliente**: Cada usuario autenticado tiene un solo carrito activo
-2. **Creación automática**: Si el usuario no tiene carrito, se crea automáticamente
-3. **Validación de stock**: Siempre valida que haya stock suficiente
-4. **Actualización inteligente**: Si agregas un producto que ya está en el carrito, suma las cantidades
-5. **Cálculo automático**: Los subtotales y totales se calculan automáticamente
+1. ✅ **Autenticación requerida** - Todas las APIs necesitan token
+2. ✅ **Un carrito por cliente** - Se crea automáticamente
+3. ✅ **Información completa** - Todo el producto incluido
+4. ✅ **Validación de stock** - Automática
+5. ✅ **Múltiples imágenes** - Todas incluidas
+6. ✅ **Cálculos automáticos** - Subtotales y totales
 
-
-todas las api requieren token 
+todas las api requieren token
+ 
