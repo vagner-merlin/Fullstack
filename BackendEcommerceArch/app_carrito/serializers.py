@@ -19,17 +19,37 @@ class ProductoCategoriaBasicoSerializer(serializers.ModelSerializer):
 
 class ItemCarritoSerializer(serializers.ModelSerializer):
     """Serializer completo para items del carrito"""
-    producto_info = ProductoCategoriaBasicoSerializer(source='Producto', read_only=True)
+    variante_info = ProductoCategoriaBasicoSerializer(source='producto_variante', read_only=True)
     subtotal = serializers.SerializerMethodField()
+    imagen_principal = serializers.SerializerMethodField()
     
     class Meta:
         model = ItemCarrito
-        fields = ['id', 'carrito', 'Producto', 'cantidad', 'producto_info', 'subtotal']
+        fields = ['id', 'carrito', 'producto_variante', 'cantidad', 'variante_info', 'subtotal', 'imagen_principal']
         read_only_fields = ['carrito']
     
     def get_subtotal(self, obj):
         """Calcula el subtotal del item"""
-        return obj.cantidad * obj.Producto.precio_unitario
+        return obj.cantidad * obj.producto_variante.precio_unitario
+    
+    def get_imagen_principal(self, obj):
+        """Obtiene la imagen principal de la variante"""
+        from app_productos.models import Imagen_Producto
+        try:
+            imagen = Imagen_Producto.objects.filter(
+                Producto_categoria=obj.producto_variante,
+                es_principal=True
+            ).first()
+            if imagen:
+                return imagen.imagen_url or imagen.imagen.url if imagen.imagen else None
+            else:
+                # Si no hay imagen principal, tomar la primera disponible
+                imagen = Imagen_Producto.objects.filter(
+                    Producto_categoria=obj.producto_variante
+                ).first()
+                return imagen.imagen_url or imagen.imagen.url if imagen and imagen.imagen else None
+        except:
+            return None
     
     def validate_cantidad(self, value):
         """Valida que la cantidad sea positiva"""
@@ -37,7 +57,7 @@ class ItemCarritoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("La cantidad debe ser mayor a 0")
         return value
     
-    def validate_Producto(self, value):
+    def validate_producto_variante(self, value):
         """Valida que el producto tenga stock disponible"""
         if not value.stock or value.stock <= 0:
             raise serializers.ValidationError("Producto sin stock disponible")
@@ -62,7 +82,7 @@ class CarritoSerializer(serializers.ModelSerializer):
         """Calcula el precio total del carrito"""
         total = 0
         for item in obj.items.all():
-            total += item.cantidad * item.Producto.precio_unitario
+            total += item.cantidad * item.producto_variante.precio_unitario
         return total
 
 class AgregarItemCarritoSerializer(serializers.Serializer):

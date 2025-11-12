@@ -28,7 +28,7 @@ export interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string | undefined>;
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
   updateUser: (updatedUser: User) => void;
@@ -73,6 +73,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setToken(response.access_token);
       setUser(response.user);
+
+      // Retornar la ruta de redirección para que el componente de login la use
+      return response.redirect_to;
     } catch (error) {
       console.error('Error en login:', error);
       throw error;

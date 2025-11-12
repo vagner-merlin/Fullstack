@@ -8,7 +8,6 @@ import {
   Tag, 
   ShoppingBag, 
   Truck, 
-  Package2, 
   Users, 
   UserCircle, 
   Menu, 
@@ -40,7 +39,7 @@ const navItems: NavItem[] = [
   { path: '/admin/categories', icon: Tag, label: 'Categorías' },
   { path: '/admin/orders', icon: ShoppingBag, label: 'Pedidos' },
   { path: '/admin/providers', icon: Truck, label: 'Proveedores' },
-  { path: '/admin/inventory', icon: Package2, label: 'Inventario' },
+  // { path: '/admin/inventory', icon: Package2, label: 'Inventario' }, // Oculto temporalmente
   { path: '/admin/employees', icon: Users, label: 'Empleados' },
   { path: '/admin/clients', icon: Users, label: 'Clientes' },
   { path: '/admin/profile', icon: UserCircle, label: 'Perfil' },

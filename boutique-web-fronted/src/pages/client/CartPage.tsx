@@ -4,7 +4,7 @@ import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import PublicLayout from '../../components/layout/PublicLayout';
 import CartItem from '../../components/cart/CartItem';
 import CartSummary from '../../components/cart/CartSummary';
-import { useCart } from '../../hooks/useCart';
+import { useCart } from '../../context/CartContext';
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -78,10 +78,10 @@ const CartPage = () => {
                 <AnimatePresence>
                   {items.map((item) => (
                     <CartItem
-                      key={item.inventario_id}
+                      key={item.id}
                       item={item}
-                      onUpdateQuantity={updateQuantity}
-                      onRemove={removeItem}
+                      onUpdateQuantity={(itemId, quantity) => updateQuantity(itemId, quantity)}
+                      onRemove={(itemId) => removeItem(itemId)}
                     />
                   ))}
                 </AnimatePresence>

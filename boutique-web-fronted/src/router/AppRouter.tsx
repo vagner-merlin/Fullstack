@@ -40,6 +40,7 @@ import { InventoryPage } from '../pages/admin/InventoryPage';
 import { SellerLayout } from '../components/seller/SellerLayout';
 import { SellerHomePage } from '../pages/seller/SellerHomePage';
 import { PosPage } from '../pages/seller/PosPage';
+import { SellerDashboard } from '../pages/seller/SellerDashboard';
 
 // Super Admin Pages - COMENTADO TEMPORALMENTE (sistema mock)
 // import { SuperAdminLayout } from '../components/superadmin/SuperAdminLayout';
@@ -110,9 +111,10 @@ const AppRouter = () => {
           <ProtectedRoute allowedRoles={['seller', 'admin', 'superadmin']}>
             <SellerLayout>
               <Routes>
+                <Route path="dashboard" element={<SellerDashboard />} />
                 <Route path="home" element={<SellerHomePage />} />
                 <Route path="pos" element={<PosPage />} />
-                <Route path="*" element={<Navigate to="/seller/home" replace />} />
+                <Route path="*" element={<Navigate to="/seller/dashboard" replace />} />
               </Routes>
             </SellerLayout>
           </ProtectedRoute>

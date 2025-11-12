@@ -11,8 +11,9 @@ import {
   toggleEmployeeActive,
   deleteEmployee,
   type Group,
-  type Employee
-} from '../../services/admin/groupsEmployeesService';
+  type Employee,
+  type CreateEmployeeData
+} from '../../services/admin/employeeService';
 
 export const EmployeesPage = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -22,7 +23,7 @@ export const EmployeesPage = () => {
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateEmployeeData>({
     username: '',
     first_name: '',
     last_name: '',
@@ -587,8 +588,11 @@ export const EmployeesPage = () => {
                   className="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                 />
                 <label htmlFor="is_staff" className="text-sm text-gray-700">
-                  Acceso al panel de administración de Django (Staff)
+                  Acceso al panel de administración de Django (Solo Staff)
                 </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Nota: Esta opción solo otorga acceso como staff, NO como superusuario
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">

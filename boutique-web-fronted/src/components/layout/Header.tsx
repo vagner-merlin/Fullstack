@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Menu, X, Instagram, Facebook, Play, LogOut, UserCircle, Heart, Bell } from 'lucide-react';
 import { useState } from 'react';
-import { useCart } from '../../hooks';
+import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useNotifications } from '../../hooks/useNotifications';

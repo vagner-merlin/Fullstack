@@ -227,3 +227,5 @@ class InventarioSerializer(serializers.ModelSerializer):
             })
         
         return data
+
+

@@ -79,7 +79,7 @@ class CarritoViewSet(viewsets.ModelViewSet):
                 # Buscar si ya existe el item en el carrito
                 item_existente = ItemCarrito.objects.filter(
                     carrito=carrito, 
-                    Producto=producto_variante
+                    producto_variante=producto_variante
                 ).first()
                 
                 if item_existente:
@@ -104,7 +104,7 @@ class CarritoViewSet(viewsets.ModelViewSet):
                     # Crear nuevo item
                     nuevo_item = ItemCarrito.objects.create(
                         carrito=carrito,
-                        Producto=producto_variante,
+                        producto_variante=producto_variante,
                         cantidad=cantidad
                     )
                     item_serializer = ItemCarritoSerializer(nuevo_item)
@@ -149,10 +149,10 @@ class CarritoViewSet(viewsets.ModelViewSet):
                     'message': 'La cantidad debe ser mayor a 0'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            if nueva_cantidad > item.Producto.stock:
+            if nueva_cantidad > item.producto_variante.stock:
                 return Response({
                     'success': False,
-                    'message': f'Stock insuficiente. Disponible: {item.Producto.stock}'
+                    'message': f'Stock insuficiente. Disponible: {item.producto_variante.stock}'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             item.cantidad = nueva_cantidad

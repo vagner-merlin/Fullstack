@@ -105,13 +105,45 @@ def login_view(request):
                 # Crear o obtener token
                 token, created = Token.objects.get_or_create(user=user)
                 
+                # Obtener información de grupos
+                user_groups = list(user.groups.values_list('name', flat=True))
+                
+                # Determinar el tipo de usuario y la vista de redirección
+                user_type = 'client'  # Por defecto cliente
+                redirect_to = '/client/dashboard'
+                
+                # Lógica de redirección basada en jerarquía de permisos
+                if user.is_superuser:
+                    user_type = 'superuser'
+                    redirect_to = '/admin/dashboard'
+                elif user.is_staff:
+                    user_type = 'staff'
+                    redirect_to = '/seller/dashboard'  # Vista de empleado con gestión de carrito/productos
+                elif user.email.endswith('.cli'):
+                    user_type = 'client_cli'
+                    redirect_to = '/client/dashboard'
+                elif user.email.endswith('.com'):
+                    user_type = 'client_com'
+                    redirect_to = '/client/dashboard'
+                else:
+                    # Por defecto, todos los demás son clientes
+                    user_type = 'client'
+                    redirect_to = '/client/dashboard'
+                
                 return Response({
                     'success': True,
                     'message': 'Login exitoso',
                     'token': token.key,
                     'user_id': user.id,
                     'email': user.email,
-                    'username': user.username
+                    'username': user.username,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'is_staff': user.is_staff,
+                    'is_superuser': user.is_superuser,
+                    'groups': user_groups,
+                    'user_type': user_type,
+                    'redirect_to': redirect_to
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({
@@ -361,6 +393,7 @@ def create_employee(request):
                     'first_name': user.first_name,
                     'last_name': user.last_name,
                     'is_staff': user.is_staff,
+                    'is_superuser': user.is_superuser,  # Agregar para debugging
                     'is_active': user.is_active,
                     'group_id': group.id if group else None,
                     'group_name': group.name if group else None

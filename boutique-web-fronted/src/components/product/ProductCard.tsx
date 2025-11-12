@@ -1,28 +1,48 @@
 import { motion } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { Star, Info, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../../services/productService';
 import { useState } from 'react';
 import FavoriteButton from './FavoriteButton';
+import ProductImage from './ProductImage';
+import ProductDetailModal from './ProductDetailModal';
+import AddToCartModal from './AddToCartModal';
+import { showToast } from '../../utils/toast';
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [mainImageUrl, setMainImageUrl] = useState<string>('/placeholder-product.jpg');
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false);
 
   const finalPrice = product.discount
     ? (Number(product.price) || 0) * (1 - (Number(product.discount) || 0) / 100)
     : (Number(product.price) || 0);
 
-  // Obtener la imagen principal o usar placeholder
-  const mainImage = product.images && product.images.length > 0 
-    ? product.images[0] 
-    : '/placeholder-product.jpg';
+  console.log('🖼️ ProductCard - Producto:', product.name, 'ID:', product.id);
 
-  console.log('🖼️ ProductCard - Producto:', product.name, 'Imagen:', mainImage);
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowDetailModal(true);
+  };
+
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!product.backendData) {
+      showToast.error('No se pudieron cargar los datos del producto');
+      return;
+    }
+
+    setShowAddToCartModal(true);
+  };
+
+
 
   return (
     <motion.div
@@ -34,31 +54,23 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <Link to={`/product/${product.id}`} className="block">
         {/* Image Container */}
         <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-          {(!imageLoaded || imageError) && (
-            <div className="absolute inset-0 bg-gradient-to-br from-boutique-beige to-boutique-rose-light animate-pulse" />
-          )}
-          <img
-            src={mainImage}
-            alt={product.name}
-            className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${
-              imageLoaded && !imageError ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={() => {
-              console.log('✅ Imagen cargada:', mainImage);
-              setImageLoaded(true);
-              setImageError(false);
-            }}
-            onError={(e) => {
-              console.error('❌ Error al cargar imagen:', mainImage);
-              setImageError(true);
-              // Intentar cargar placeholder como fallback
-              const img = e.target as HTMLImageElement;
-              if (img.src !== '/placeholder-product.jpg') {
-                img.src = '/placeholder-product.jpg';
-              }
-            }}
-            loading="lazy"
-          />
+          <div 
+            onClick={handleImageClick}
+            className="cursor-pointer group-hover:cursor-zoom-in"
+          >
+            <ProductImage
+              productId={product.id}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              alt={product.name}
+              onImageLoad={(image) => {
+                console.log('✅ Imagen cargada para producto:', product.name, image.imagen_url);
+                setMainImageUrl(image.imagen_url || '/placeholder-product.jpg');
+              }}
+              onImageError={(error) => {
+                console.error('❌ Error al cargar imagen para producto:', product.name, error);
+              }}
+            />
+          </div>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
@@ -74,8 +86,18 @@ const ProductCard = ({ product }: ProductCardProps) => {
             )}
           </div>
 
-          {/* Favorite Button */}
-          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Action Buttons */}
+          <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Info Button */}
+            <button
+              onClick={handleImageClick}
+              className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-md hover:bg-white transition-colors"
+              title="Ver detalles del producto"
+            >
+              <Info size={16} className="text-boutique-rose" />
+            </button>
+            
+            {/* Favorite Button */}
             <div className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-md hover:bg-white">
               <FavoriteButton
                 productId={product.id}
@@ -83,7 +105,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                   id: product.id,
                   nombre: product.name,
                   precio: product.price,
-                  imagen_principal: mainImage,
+                  imagen_principal: mainImageUrl,
                   categoria: product.category,
                   stock_disponible: product.stock,
                 }}
@@ -160,8 +182,35 @@ const ProductCard = ({ product }: ProductCardProps) => {
               Agotado
             </p>
           )}
+
+          {/* Add to Cart Button */}
+          {(Number(product.stock) || 0) > 0 && (
+            <button
+              onClick={handleAddToCartClick}
+              className="w-full mt-4 px-4 py-2 bg-boutique-rose text-white rounded-lg font-poppins font-semibold hover:bg-boutique-rose-dark transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+            >
+              <ShoppingCart size={16} />
+              <span>Añadir al Carrito</span>
+            </button>
+          )}
         </div>
       </Link>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        productData={product.backendData || null}
+      />
+
+      {/* Add to Cart Modal */}
+      {product.backendData && (
+        <AddToCartModal
+          isOpen={showAddToCartModal}
+          onClose={() => setShowAddToCartModal(false)}
+          product={product.backendData}
+        />
+      )}
     </motion.div>
   );
 };

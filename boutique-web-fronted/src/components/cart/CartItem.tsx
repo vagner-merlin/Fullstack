@@ -4,20 +4,20 @@ import type { CartItem as CartItemType } from '../../context/CartContext';
 
 interface CartItemProps {
   item: CartItemType;
-  onUpdateQuantity: (inventario_id: number, cantidad: number) => void;
-  onRemove: (inventario_id: number) => void;
+  onUpdateQuantity: (itemId: string | number, cantidad: number) => void;
+  onRemove: (itemId: string | number) => void;
 }
 
 const CartItem = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
   const incrementQuantity = () => {
     if (item.cantidad < item.stock_disponible) {
-      onUpdateQuantity(item.inventario_id, item.cantidad + 1);
+      onUpdateQuantity(item.id, item.cantidad + 1);
     }
   };
 
   const decrementQuantity = () => {
     if (item.cantidad > 1) {
-      onUpdateQuantity(item.inventario_id, item.cantidad - 1);
+      onUpdateQuantity(item.id, item.cantidad - 1);
     }
   };
 
@@ -118,7 +118,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => onRemove(item.inventario_id)}
+                onClick={() => onRemove(item.id)}
                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                 aria-label="Eliminar producto"
               >

@@ -1,5 +1,69 @@
 // Service para productos - Conectado al backend Django
 
+// Interfaces para los datos que vienen del backend
+export interface BackendImage {
+  id: number;
+  imagen: string;
+  imagen_url: string;
+  texto: string;
+  es_principal: boolean;
+  Producto_categoria: number;
+}
+
+export interface BackendVariant {
+  id: number;
+  producto: number;
+  categoria: number;
+  color: string;
+  talla: string;
+  capacidad: string;
+  precio_variante: string;
+  precio_unitario: string;
+  stock: number;
+  fecha_creacion: string;
+  producto_info: {
+    id: number;
+    nombre: string;
+    descripcion: string;
+    activo: boolean;
+    fecha_creacion: string;
+    peso: string;
+  };
+  categoria_info: {
+    id: number;
+    nombre: string;
+    descripcion: string;
+    activo: boolean;
+  };
+  imagenes: BackendImage[];
+  imagen_principal: BackendImage;
+}
+
+export interface BackendCategory {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+}
+
+export interface BackendProduct {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+  fecha_creacion: string;
+  peso: string;
+  variantes: BackendVariant[];
+  categorias: BackendCategory[];
+}
+
+export interface BackendResponse {
+  success: boolean;
+  count: number;
+  productos: BackendProduct[];
+}
+
+// Interface para el frontend
 export interface Product {
   id: number;
   name: string;
@@ -15,6 +79,8 @@ export interface Product {
   reviews: number;
   isNew?: boolean;
   isFeatured?: boolean;
+  // Información adicional del backend
+  backendData?: BackendProduct;
 }
 
 export interface ProductFilters {
@@ -44,14 +110,15 @@ export const productService = {
   getProducts: async (filters: ProductFilters = {}): Promise<ProductsResponse> => {
     try {
       console.log('🌐 ProductService: Iniciando llamada a API');
-      console.log('🔗 URL completa:', `${API_URL}/api/productos/`);
+      console.log('🔗 URL completa:', `${API_URL}/api/productos/productos`);
       console.log('📊 Filtros aplicados:', filters);
       
-      const response = await fetch(`${API_URL}/api/productos/`, {
+      const response = await fetch(`${API_URL}/api/productos/productos`, {
         headers: { 'Content-Type': 'application/json' },
       });
       
       console.log('📡 Respuesta del servidor:', {
+        RESPONSE:response,
         status: response.status,
         statusText: response.statusText,
         ok: response.ok,
@@ -81,10 +148,11 @@ export const productService = {
       }
       
       // El backend retorna { success: true, count: X, productos: [...] }
-      const productosBackend = data.productos || [];
+      const backendData = data as BackendResponse;
+      const productosBackend = backendData.productos || [];
       
       // Mapear productos del backend al formato del frontend
-      const products: Product[] = productosBackend.map((prod: any) => {
+      const products: Product[] = productosBackend.map((prod: BackendProduct) => {
         console.log('🔍 Mapeando producto:', prod.nombre, prod);
         
         // Obtener la primera variante para obtener precio e imágenes
@@ -93,29 +161,31 @@ export const productService = {
         // Obtener todas las imágenes de todas las variantes
         const todasImagenes: string[] = [];
         if (prod.variantes) {
-          prod.variantes.forEach((variante: any) => {
-            console.log('  🔍 Variante:', variante);
-            if (variante.imagenes && Array.isArray(variante.imagenes)) {
-              console.log('    📸 Imágenes de variante:', variante.imagenes);
-              variante.imagenes.forEach((img: any) => {
-                console.log('      🖼️ Imagen individual:', img);
-                // Priorizar imagen_url (desde S3), si no existe usar imagen
-                const urlImagen = img.imagen_url || img.imagen;
-                if (urlImagen) {
-                  todasImagenes.push(urlImagen);
-                  console.log('        ✅ URL agregada:', urlImagen);
-                }
-              });
-            }
+          prod.variantes.forEach((variante: BackendVariant) => {
+            console.log('  🔍 Variante:', variante.color, variante.talla);
             
-            // También verificar si hay imagen_principal
+            // Agregar imagen principal si existe
             if (variante.imagen_principal) {
-              console.log('    📸 Imagen principal:', variante.imagen_principal);
+              console.log('    � Imagen principal:', variante.imagen_principal);
               const urlImagenPrincipal = variante.imagen_principal.imagen_url || variante.imagen_principal.imagen;
               if (urlImagenPrincipal && !todasImagenes.includes(urlImagenPrincipal)) {
                 todasImagenes.unshift(urlImagenPrincipal); // Agregar al inicio
                 console.log('      ✅ Imagen principal agregada al inicio:', urlImagenPrincipal);
               }
+            }
+            
+            // Agregar imágenes adicionales si existen
+            if (variante.imagenes && Array.isArray(variante.imagenes)) {
+              console.log('    📸 Imágenes de variante:', variante.imagenes.length);
+              variante.imagenes.forEach((img: BackendImage) => {
+                console.log('      🖼️ Imagen individual:', img.texto);
+                // Priorizar imagen_url (desde S3), si no existe usar imagen
+                const urlImagen = img.imagen_url || img.imagen;
+                if (urlImagen && !todasImagenes.includes(urlImagen)) {
+                  todasImagenes.push(urlImagen);
+                  console.log('        ✅ URL agregada:', urlImagen);
+                }
+              });
             }
           });
         }
@@ -124,15 +194,15 @@ export const productService = {
         
         // Obtener colores y tallas únicos
         const colores = prod.variantes 
-          ? [...new Set(prod.variantes.map((v: any) => v.color).filter(Boolean))] as string[]
+          ? [...new Set(prod.variantes.map((v: BackendVariant) => v.color).filter(Boolean))] as string[]
           : [];
         const tallas = prod.variantes 
-          ? [...new Set(prod.variantes.map((v: any) => v.talla).filter(Boolean))] as string[]
+          ? [...new Set(prod.variantes.map((v: BackendVariant) => v.talla).filter(Boolean))] as string[]
           : [];
         
         // Calcular stock total
         const stockTotal = prod.variantes 
-          ? prod.variantes.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
+          ? prod.variantes.reduce((sum: number, v: BackendVariant) => sum + (v.stock || 0), 0)
           : 0;
         
         // Obtener categoría
@@ -140,11 +210,17 @@ export const productService = {
           ? prod.categorias[0].nombre 
           : 'Sin categoría';
         
+        // Verificar si es nuevo (creado en los últimos 30 días)
+        const fechaCreacion = new Date(prod.fecha_creacion);
+        const ahora = new Date();
+        const diasDiferencia = Math.floor((ahora.getTime() - fechaCreacion.getTime()) / (1000 * 3600 * 24));
+        const esNuevo = diasDiferencia <= 30;
+        
         return {
           id: prod.id,
           name: prod.nombre,
           description: prod.descripcion || '',
-          price: primeraVariante ? primeraVariante.precio_unitario : 0,
+          price: primeraVariante ? parseFloat(primeraVariante.precio_unitario) : 0,
           discount: 0, // El backend no tiene descuento por ahora
           category: categoria,
           images: todasImagenes.length > 0 ? todasImagenes : ['/placeholder-product.jpg'],
@@ -152,9 +228,10 @@ export const productService = {
           colors: colores,
           stock: stockTotal,
           rating: 4.5, // Por ahora fijo, se puede calcular desde reseñas
-          reviews: 0, // Por ahora fijo
-          isNew: false, // Puedes calcularlo con fecha_creacion
+          reviews: Math.floor(Math.random() * 50) + 1, // Random por ahora
+          isNew: esNuevo,
           isFeatured: false,
+          backendData: prod // Guardar datos originales para el modal
         };
       });
       

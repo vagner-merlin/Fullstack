@@ -37,16 +37,21 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const redirectTo = await login(formData.email, formData.password);
       
-      // Obtener el rol del usuario recién logueado
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const redirectPath = getRedirectPath(user.role);
-        navigate(redirectPath, { replace: true });
+      // Redirigir automáticamente según el tipo de usuario determinado por el backend
+      if (redirectTo) {
+        navigate(redirectTo, { replace: true });
       } else {
-        navigate('/', { replace: true });
+        // Fallback en caso de que no haya redirect_to
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          const redirectPath = getRedirectPath(user.role);
+          navigate(redirectPath, { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');

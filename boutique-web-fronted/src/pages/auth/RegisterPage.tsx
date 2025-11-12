@@ -16,7 +16,7 @@ const RegisterPage = () => {
     username: '',
     firstName: '',
     lastName: '',
-    email: '',
+    emailPrefix: '', // Solo el nombre de usuario antes de @
     password: '',
     confirmPassword: '',
   });
@@ -26,22 +26,33 @@ const RegisterPage = () => {
     setError('');
     
     // Validaciones
+    if (!formData.emailPrefix.trim()) {
+      setError('El nombre de usuario del email es requerido');
+      return;
+    }
+
+    if (formData.emailPrefix.includes('@') || formData.emailPrefix.includes(' ')) {
+      setError('El nombre de usuario no debe contener @ ni espacios');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
-    
+
     if (formData.password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres');
       return;
-    }
-
-    setIsLoading(true);
+    }    setIsLoading(true);
 
     try {
+      // Construir el email completo con @gmail.cli fijo
+      const fullEmail = `${formData.emailPrefix}@gmail.cli`;
+      
       await register({
         username: formData.username,
-        email: formData.email,
+        email: fullEmail,
         password: formData.password,
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -215,15 +226,28 @@ const RegisterPage = () => {
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="tu@email.com"
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl font-poppins text-sm focus:outline-none focus:border-boutique-black-matte transition-colors"
-                />
+                <div className="flex">
+                  <input
+                    type="text"
+                    required
+                    value={formData.emailPrefix}
+                    onChange={(e) => setFormData({ ...formData, emailPrefix: e.target.value })}
+                    placeholder="nombre"
+                    className="flex-1 pl-10 pr-2 py-2.5 border border-gray-300 rounded-l-xl font-poppins text-sm focus:outline-none focus:border-boutique-black-matte transition-colors"
+                  />
+                  <div className="px-3 py-2.5 bg-gray-100 border-t border-r border-b border-gray-300 rounded-r-xl flex items-center font-poppins text-sm text-gray-600">
+                    @gmail.cli
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Solo escribe tu nombre de usuario. El dominio @gmail.cli se agregará automáticamente
+              </p>
+              {formData.emailPrefix && (
+                <p className="text-xs text-blue-600 mt-1 font-medium">
+                  Tu email será: <span className="bg-blue-50 px-2 py-0.5 rounded">{formData.emailPrefix}@gmail.cli</span>
+                </p>
+              )}
             </div>
 
             {/* Password Field */}

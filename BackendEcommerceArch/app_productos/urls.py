@@ -5,7 +5,7 @@ from .api import (
     ReseñaViewSet, ImagenProductoViewSet, ItemPedidoViewSet, ItemComprasViewSet,
     InventarioViewSet
 )
-from .upload_api import ImageUploadAPIView
+from .upload_api import ImageUploadAPIView, ImageDisplayAPIView, ImageStatsAPIView
 
 router = DefaultRouter()
 router.register(r'productos', ProductoViewSet, basename='producto')
@@ -20,4 +20,6 @@ router.register(r'inventario', InventarioViewSet, basename='inventario')
 urlpatterns = [
     path('', include(router.urls)),
     path('upload-imagen/', ImageUploadAPIView.as_view(), name='upload-imagen'),
+    path('mostrar-imagenes/', ImageDisplayAPIView.as_view(), name='mostrar-imagenes'),
+    path('estadisticas-imagenes/', ImageStatsAPIView.as_view(), name='estadisticas-imagenes'),
 ]

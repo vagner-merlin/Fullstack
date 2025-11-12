@@ -1,4 +1,4 @@
-﻿import type { User, RegisterData } from '../context/AuthContext';
+import type { User, RegisterData } from '../context/AuthContext';
 import type { UserRole } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -7,12 +7,29 @@ interface LoginResponse {
   access_token: string;
   refresh_token: string;
   user: User;
+  redirect_to?: string;
 }
 
 interface RegisterResponse {
   user: User;
   access_token: string;
   refresh_token: string;
+}
+
+interface LoginApiResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user_id: number;
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+  groups: string[];
+  user_type: string;
+  redirect_to: string;
 }
 
 export const authService = {
@@ -28,93 +45,47 @@ export const authService = {
       throw new Error(error.message || 'Credenciales inválidas');
     }
     
-    const data = await response.json();
+    const data: LoginApiResponse = await response.json();
     console.log('🔐 Respuesta de login:', data);
     
-    // Obtener datos del usuario
-    const userResponse = await fetch(`${API_URL}/api/users/users/${data.user_id}/`, {
-      headers: { 
-        'Authorization': `Token ${data.token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Determinar el rol basado en el user_type del backend
+    let role: UserRole = 'client';
     
-    if (!userResponse.ok) {
-      throw new Error('Error al obtener datos del usuario');
-    }
-    
-    const userData = await userResponse.json();
-    console.log('👤 Datos del usuario:', userData);
-    
-    // Intentar obtener los grupos del usuario
-    let role: UserRole = 'client'; // Por defecto es cliente
-    
-    try {
-      const groupsResponse = await fetch(`${API_URL}/api/users/user-groups/${data.user_id}/`, {
-        headers: { 
-          'Authorization': `Token ${data.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (groupsResponse.ok) {
-        const groupsData = await groupsResponse.json();
-        console.log('👥 Grupos del usuario:', groupsData);
-        
-        // Determinar rol basado en los grupos
-        if (groupsData.groups && Array.isArray(groupsData.groups)) {
-          const groupNames = groupsData.groups.map((g: any) => g.name?.toLowerCase());
-          
-          if (userData.is_superuser || groupNames.includes('superadmin')) {
-            role = 'superadmin';
-          } else if (userData.is_staff || groupNames.includes('admin') || groupNames.includes('administrador')) {
-            role = 'admin';
-          } else if (groupNames.includes('seller') || groupNames.includes('vendedor')) {
-            role = 'seller';
-          } else if (groupNames.includes('client') || groupNames.includes('cliente')) {
-            role = 'client';
-          }
-          
-          console.log('✅ Rol detectado:', role);
-        }
-      } else {
-        console.warn('⚠️ No se pudieron obtener los grupos del usuario, usando rol por defecto');
-        
-        // Fallback a la lógica anterior si no hay endpoint de grupos
-        if (userData.is_superuser) {
-          role = 'superadmin';
-        } else if (userData.is_staff) {
-          role = 'admin';
-        }
-      }
-    } catch (groupError) {
-      console.error('❌ Error al obtener grupos:', groupError);
-      
-      // Fallback a la lógica anterior
-      if (userData.is_superuser) {
+    switch (data.user_type) {
+      case 'superuser':
         role = 'superadmin';
-      } else if (userData.is_staff) {
-        role = 'admin';
-      }
+        break;
+      case 'staff':
+        role = 'seller';
+        break;
+      case 'client_cli':
+      case 'client_com':
+      case 'client':
+        role = 'client';
+        break;
+      default:
+        role = 'client';
     }
     
     const user: User = {
-      id: userData.id,
-      email: userData.email,
-      first_name: userData.first_name || '',
-      last_name: userData.last_name || '',
+      id: data.user_id,
+      email: data.email,
+      first_name: data.first_name || '',
+      last_name: data.last_name || '',
       role: role,
-      is_superuser: userData.is_superuser || false,
-      is_staff: userData.is_staff || false,
-      is_active: userData.is_active !== undefined ? userData.is_active : true,
+      is_superuser: data.is_superuser || false,
+      is_staff: data.is_staff || false,
+      is_active: true,
     };
     
     console.log('✅ Usuario autenticado:', user);
+    console.log('🚀 Redirigir a:', data.redirect_to);
     
     return {
       access_token: data.token,
       refresh_token: data.token,
       user: user,
+      redirect_to: data.redirect_to,
     };
   },
 
@@ -133,87 +104,85 @@ export const authService = {
     
     if (!response.ok) {
       const error = await response.json();
-      if (error.errors) {
-        const errorMessages = Object.values(error.errors).flat();
-        throw new Error(errorMessages[0] as string || 'Error en el registro');
-      }
-      throw new Error(error.message || 'Error en el registro');
+      throw new Error(error.message || 'Error al registrar usuario');
     }
     
     const responseData = await response.json();
+    console.log('📝 Respuesta de registro:', responseData);
     
-    // Verificar si el usuario fue asignado al grupo correctamente
-    console.log('📝 Respuesta del registro:', responseData);
-    
-    if (responseData.group_id === 3 && responseData.group_name === 'cliente') {
-      console.log('✅ Usuario asignado correctamente al grupo "cliente" (ID: 3)');
-    } else if (!responseData.group_id) {
-      console.warn('⚠️ El usuario no fue asignado a ningún grupo automáticamente');
-      console.log('🔄 Intentando asignar manualmente al grupo "cliente"...');
-      
-      // Intentar asignar manualmente al grupo 3
-      try {
-        const addGroupResponse = await fetch(`${API_URL}/api/users/add-user-to-group/`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${responseData.token}`
-          },
-          body: JSON.stringify({
-            user_id: responseData.user_id,
-            group_id: 3
-          }),
-        });
-        
-        if (addGroupResponse.ok) {
-          const groupData = await addGroupResponse.json();
-          console.log('✅ Usuario asignado manualmente al grupo:', groupData);
-        } else {
-          console.error('❌ Error al asignar usuario al grupo manualmente');
-        }
-      } catch (groupError) {
-        console.error('❌ Error en la llamada para asignar grupo:', groupError);
-      }
-    }
-    
+    // Crear objeto user para el registro
     const user: User = {
       id: responseData.user_id,
       email: responseData.email,
-      first_name: responseData.first_name || '',
-      last_name: responseData.last_name || '',
-      role: 'client',
+      first_name: data.first_name,
+      last_name: data.last_name,
+      role: 'client', // Los registros nuevos son siempre clientes
       is_superuser: false,
       is_staff: false,
       is_active: true,
     };
     
     return {
-      user: user,
       access_token: responseData.token,
       refresh_token: responseData.token,
+      user: user,
     };
   },
 
-  me: async (token: string): Promise<User> => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) throw new Error('No autenticado');
-    
-    const user = JSON.parse(userStr);
-    
-    const response = await fetch(`${API_URL}/api/users/users/${user.id}/`, {
+  logout: async (): Promise<void> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    try {
+      await fetch(`${API_URL}/api/users/logout/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.error('Error al hacer logout:', error);
+    }
+  },
+
+  refreshToken: async (refreshToken: string): Promise<{ access_token: string }> => {
+    const response = await fetch(`${API_URL}/api/users/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al renovar token');
+    }
+
+    return response.json();
+  },
+
+  getUserProfile: async (): Promise<User> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    const response = await fetch(`${API_URL}/api/users/profile/`, {
       headers: {
         'Authorization': `Token ${token}`,
         'Content-Type': 'application/json',
       },
     });
-    
-    if (!response.ok) throw new Error('Token inválido');
-    
+
+    if (!response.ok) {
+      throw new Error('Error al obtener perfil');
+    }
+
     const userData = await response.json();
     
+    // Determinar role basado en propiedades del usuario
     let role: UserRole = 'client';
     if (userData.is_superuser) role = 'superadmin';
-    else if (userData.is_staff) role = 'admin';
+    else if (userData.is_staff) role = 'seller';
     
     return {
       id: userData.id,
@@ -224,45 +193,34 @@ export const authService = {
       is_superuser: userData.is_superuser || false,
       is_staff: userData.is_staff || false,
       is_active: userData.is_active !== undefined ? userData.is_active : true,
+      telefono: userData.telefono,
+      fecha_nacimiento: userData.fecha_nacimiento,
+      genero: userData.genero,
+      created_at: userData.created_at,
+      direccion: userData.direccion,
+      ciudad: userData.ciudad,
     };
   },
 
-  refreshToken: async (refreshToken: string): Promise<{ access_token: string }> => {
-    return { access_token: refreshToken };
-  },
-
-  logout: async (): Promise<void> => {
+  updateProfile: async (userData: Partial<User>): Promise<User> => {
     const token = localStorage.getItem('auth_token');
-    
     if (!token) {
-      console.log('No hay token para cerrar sesión');
-      return;
+      throw new Error('No token available');
     }
-    
-    try {
-      // Llamar a la API de logout del backend para eliminar el token
-      const response = await fetch(`${API_URL}/api/users/logout/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Logout exitoso:', data.message);
-      } else {
-        console.error('Error al hacer logout en el servidor');
-      }
-    } catch (error) {
-      console.error('Error en logout:', error);
-      // Continuar con la limpieza local aunque falle el servidor
+
+    const response = await fetch(`${API_URL}/api/users/profile/`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Token ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al actualizar perfil');
     }
-    
-    // Limpiar el localStorage (esto siempre se ejecuta)
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
+
+    return response.json();
   },
 };

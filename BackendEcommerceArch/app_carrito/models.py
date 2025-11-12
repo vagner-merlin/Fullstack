@@ -1,6 +1,6 @@
 from django.db import models
 from app_Cliente.models import Cliente
-from app_productos.models import Producto
+from app_productos.models import ProductoCategoria
 # Create your models here.
 
 
@@ -11,6 +11,6 @@ class Carrito(models.Model):
 
 class ItemCarrito(models.Model):
     carrito = models.ForeignKey(Carrito, related_name='items', on_delete=models.CASCADE)
-    Producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    producto_variante = models.ForeignKey(ProductoCategoria, on_delete=models.CASCADE , null=True, blank=True)
     cantidad = models.PositiveIntegerField(default=1)
 
