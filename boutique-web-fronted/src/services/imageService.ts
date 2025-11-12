@@ -1,102 +1,47 @@
 /**
  * Servicio para manejar las imágenes de productos desde S3
+ * Usa directamente el endpoint /api/productos/imagenes/
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface ImageInfo {
   id: number;
-  imagen_url: string | null;
-  imagen_name: string | null;
+  imagen: string;
+  imagen_url: string;
   texto: string;
   es_principal: boolean;
-  producto_categoria_id: number;
-  producto_info: {
-    id: number;
-    nombre: string;
-    descripcion: string;
-    activo: boolean;
-    peso: number | null;
-  };
-  categoria_info: {
-    id: number;
-    nombre: string;
-    descripcion: string;
-  };
-  variante_info: {
-    color: string;
-    talla: string;
-    capacidad: string | null;
-    precio_variante: number;
-    precio_unitario: number;
-    stock: number;
-    fecha_creacion: string | null;
-  };
-  s3_info: {
-    storage_backend: string;
-    file_size: number | null;
-    content_type: string | null;
-  };
+  Producto_categoria: number;
 }
 
 export interface ImageResponse {
-  success: boolean;
-  count: number;
-  imagenes: ImageInfo[];
-}
-
-export interface SingleImageResponse {
-  success: boolean;
-  imagen: ImageInfo;
-}
-
-export interface ImageStatsResponse {
-  success: boolean;
-  estadisticas: {
-    total_imagenes: number;
-    imagenes_principales: number;
-    imagenes_secundarias: number;
-    productos_con_imagenes: number;
-    categorias_con_imagenes: number;
-    storage_backend: string;
-  };
+  count?: number;
+  results?: ImageInfo[];
 }
 
 export interface ImageFilters {
-  producto_categoria?: number;
-  producto?: number;
-  categoria?: number;
-  principal?: boolean;
-  imagen_id?: number;
+  Producto_categoria?: number;
+  es_principal?: boolean;
 }
 
 class ImageService {
   private baseURL = `${API_BASE_URL}/api/productos`;
 
   /**
-   * Obtener imágenes con filtros opcionales
+   * Obtener imágenes con filtros opcionales usando el endpoint directo
    */
-  async getImages(filters?: ImageFilters): Promise<ImageResponse> {
+  async getImages(filters?: ImageFilters): Promise<ImageInfo[]> {
     try {
       const params = new URLSearchParams();
       
-      if (filters?.producto_categoria) {
-        params.append('producto_categoria', filters.producto_categoria.toString());
+      if (filters?.Producto_categoria) {
+        params.append('Producto_categoria', filters.Producto_categoria.toString());
       }
-      if (filters?.producto) {
-        params.append('producto', filters.producto.toString());
-      }
-      if (filters?.categoria) {
-        params.append('categoria', filters.categoria.toString());
-      }
-      if (filters?.principal !== undefined) {
-        params.append('principal', filters.principal.toString());
-      }
-      if (filters?.imagen_id) {
-        params.append('imagen_id', filters.imagen_id.toString());
+      if (filters?.es_principal !== undefined) {
+        params.append('es_principal', filters.es_principal.toString());
       }
 
-      const url = `${this.baseURL}/mostrar-imagenes/${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `${this.baseURL}/imagenes/${params.toString() ? `?${params.toString()}` : ''}`;
       
       console.log('🖼️ ImageService: Fetching images from:', url);
       
@@ -106,23 +51,32 @@ class ImageService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data: ImageResponse = await response.json();
+      const data: ImageResponse | ImageInfo[] = await response.json();
       
-      console.log('✅ ImageService: Images loaded successfully:', data);
+      // El endpoint puede devolver { results: [...] } o directamente [...]
+      let images: ImageInfo[] = [];
       
-      return data;
+      if (Array.isArray(data)) {
+        images = data;
+      } else if (data.results) {
+        images = data.results;
+      }
+      
+      console.log('✅ ImageService: Images loaded successfully:', images);
+      
+      return images;
     } catch (error) {
       console.error('❌ ImageService: Error fetching images:', error);
-      throw error;
+      return [];
     }
   }
 
   /**
    * Obtener imagen específica por ID
    */
-  async getImageById(imageId: number): Promise<SingleImageResponse> {
+  async getImageById(imageId: number): Promise<ImageInfo | null> {
     try {
-      const url = `${this.baseURL}/mostrar-imagenes/?imagen_id=${imageId}`;
+      const url = `${this.baseURL}/imagenes/${imageId}/`;
       
       console.log('🖼️ ImageService: Fetching single image from:', url);
       
@@ -132,43 +86,22 @@ class ImageService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data: SingleImageResponse = await response.json();
+      const data: ImageInfo = await response.json();
       
       console.log('✅ ImageService: Single image loaded successfully:', data);
       
       return data;
     } catch (error) {
       console.error('❌ ImageService: Error fetching single image:', error);
-      throw error;
+      return null;
     }
   }
 
   /**
-   * Obtener todas las imágenes de un producto específico
+   * Obtener todas las imágenes de una variante específica (ProductoCategoria)
    */
-  async getProductImages(productId: number): Promise<ImageResponse> {
-    return this.getImages({ producto: productId });
-  }
-
-  /**
-   * Obtener imagen principal de un producto
-   */
-  async getProductMainImage(productId: number): Promise<ImageInfo | null> {
-    try {
-      const response = await this.getImages({ 
-        producto: productId, 
-        principal: true 
-      });
-      
-      if (response.imagenes && response.imagenes.length > 0) {
-        return response.imagenes[0];
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('❌ ImageService: Error fetching main image:', error);
-      return null;
-    }
+  async getVariantImages(variantId: number): Promise<ImageInfo[]> {
+    return this.getImages({ Producto_categoria: variantId });
   }
 
   /**
@@ -176,13 +109,19 @@ class ImageService {
    */
   async getVariantMainImage(variantId: number): Promise<ImageInfo | null> {
     try {
-      const response = await this.getImages({ 
-        producto_categoria: variantId, 
-        principal: true 
+      const images = await this.getImages({ 
+        Producto_categoria: variantId, 
+        es_principal: true 
       });
       
-      if (response.imagenes && response.imagenes.length > 0) {
-        return response.imagenes[0];
+      if (images && images.length > 0) {
+        return images[0];
+      }
+      
+      // Si no hay imagen principal, devolver la primera imagen disponible
+      const allImages = await this.getVariantImages(variantId);
+      if (allImages && allImages.length > 0) {
+        return allImages[0];
       }
       
       return null;
@@ -193,43 +132,29 @@ class ImageService {
   }
 
   /**
-   * Obtener todas las imágenes principales (para catálogo)
+   * Obtener imagen principal de un producto (primera variante)
    */
-  async getAllMainImages(): Promise<ImageResponse> {
-    return this.getImages({ principal: true });
-  }
-
-  /**
-   * Obtener imágenes por categoría
-   */
-  async getCategoryImages(categoryId: number): Promise<ImageResponse> {
-    return this.getImages({ categoria: categoryId });
-  }
-
-  /**
-   * Obtener estadísticas de imágenes
-   */
-  async getImageStats(): Promise<ImageStatsResponse> {
+  async getProductMainImage(productId: number): Promise<ImageInfo | null> {
     try {
-      const url = `${this.baseURL}/estadisticas-imagenes/`;
+      // Buscar cualquier imagen y devolver la primera principal
+      const images = await this.getImages({ es_principal: true });
       
-      console.log('📊 ImageService: Fetching image stats from:', url);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (images && images.length > 0) {
+        return images[0];
       }
       
-      const data: ImageStatsResponse = await response.json();
-      
-      console.log('✅ ImageService: Image stats loaded successfully:', data);
-      
-      return data;
+      return null;
     } catch (error) {
-      console.error('❌ ImageService: Error fetching image stats:', error);
-      throw error;
+      console.error('❌ ImageService: Error fetching product main image:', error);
+      return null;
     }
+  }
+
+  /**
+   * Obtener todas las imágenes principales (para catálogo)
+   */
+  async getAllMainImages(): Promise<ImageInfo[]> {
+    return this.getImages({ es_principal: true });
   }
 
   /**
@@ -250,18 +175,14 @@ class ImageService {
       return imageInfo.texto;
     }
     
-    const productName = imageInfo.producto_info?.nombre || 'Producto';
-    const variant = imageInfo.variante_info ? 
-      `${imageInfo.variante_info.color} - ${imageInfo.variante_info.talla}` : '';
-    
-    return `${productName} ${variant}`.trim();
+    return 'Imagen de producto';
   }
 
   /**
    * Verificar si una imagen está disponible
    */
   isImageAvailable(imageInfo: ImageInfo | null): boolean {
-    return !!(imageInfo?.imagen_url && imageInfo.producto_info?.activo);
+    return !!(imageInfo?.imagen_url);
   }
 }
 

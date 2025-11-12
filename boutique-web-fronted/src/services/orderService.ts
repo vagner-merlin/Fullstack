@@ -7,7 +7,7 @@ export interface ShippingAddress {
   id?: number;
   direccion_completa: string;
   ciudad: string;
-  codigo_postal: string;
+  codigo_postal?: string;
   telefono?: string;
   notas?: string;
 }

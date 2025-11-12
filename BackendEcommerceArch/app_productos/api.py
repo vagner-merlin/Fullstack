@@ -122,7 +122,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Permisos dinámicos: solo lectura pública, escritura autenticada"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [permissions.IsAuthenticated]
+            permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.AllowAny]
         
@@ -173,7 +173,7 @@ class ProductoCategoriaViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Permisos dinámicos"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [permissions.IsAuthenticated]
+            permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.AllowAny]
         
@@ -277,7 +277,7 @@ class ImagenProductoViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [permissions.IsAuthenticated]
+            permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.AllowAny]
         

@@ -219,8 +219,11 @@ export const productService = {
         const diasDiferencia = Math.floor((ahora.getTime() - fechaCreacion.getTime()) / (1000 * 3600 * 24));
         const esNuevo = diasDiferencia <= 30;
         
+        // IMPORTANTE: Usar el ID de la primera variante para la navegación
+        const variantId = primeraVariante ? primeraVariante.id : prod.id;
+        
         return {
-          id: prod.id,
+          id: variantId, // Usar ID de variante para que funcione la navegación
           name: prod.nombre,
           description: prod.descripcion || '',
           price: primeraVariante ? parseFloat(primeraVariante.precio_unitario) : 0,
@@ -466,6 +469,54 @@ export const productService = {
     } catch (error) {
       console.error('Error en getCategories:', error);
       return [];
+    }
+  },
+
+  // Obtener variante específica por ID (ProductoCategoria)
+  getVariantById: async (variantId: number): Promise<BackendVariant | null> => {
+    try {
+      console.log(`🔍 ProductService: Buscando variante con ID: ${variantId}`);
+      console.log(`🔗 URL: ${API_URL}/api/productos/variantes/${variantId}/`);
+      
+      const response = await fetch(`${API_URL}/api/productos/variantes/${variantId}/`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      console.log(`📡 Respuesta recibida:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+      
+      if (!response.ok) {
+        console.error(`❌ Variante no encontrada (${response.status}):`, variantId);
+        const errorText = await response.text();
+        console.error('📄 Contenido del error:', errorText);
+        return null;
+      }
+      
+      const data: BackendVariant = await response.json();
+      console.log('✅ Variante recibida:', data);
+      console.log('📦 Estructura:', {
+        id: data.id,
+        producto_info: data.producto_info?.nombre,
+        categoria_info: data.categoria_info?.nombre,
+        color: data.color,
+        talla: data.talla,
+        precio: data.precio_unitario,
+        stock: data.stock,
+        imagenes: data.imagenes?.length || 0,
+        imagen_principal: data.imagen_principal ? 'Sí' : 'No',
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error en getVariantById:', error);
+      if (error instanceof Error) {
+        console.error('💬 Mensaje:', error.message);
+        console.error('📍 Stack:', error.stack);
+      }
+      return null;
     }
   },
 };

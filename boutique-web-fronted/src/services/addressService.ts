@@ -64,6 +64,7 @@ export const createAddress = async (data: CreateAddressData): Promise<SavedAddre
   // Crear nueva dirección
   const newAddress: SavedAddress = {
     id: Date.now(),
+    direccion_completa: data.direccion, // Mapear direccion a direccion_completa
     ...data,
   };
 

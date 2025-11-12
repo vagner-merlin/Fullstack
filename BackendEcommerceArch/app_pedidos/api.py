@@ -12,7 +12,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
     """
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     def get_serializer_class(self):
         """Usar diferentes serializers según la acción"""

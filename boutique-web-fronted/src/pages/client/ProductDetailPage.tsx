@@ -18,25 +18,74 @@ const ProductDetailPage = () => {
   useEffect(() => {
     const loadProduct = async () => {
       if (!id) {
-        console.error('❌ ProductDetailPage: No hay ID de producto en params');
+        console.error('❌ ProductDetailPage: No hay ID en params');
         return;
       }
       
-      console.log(`📄 ProductDetailPage: Cargando producto con ID: ${id}`);
+      console.log(`📄 ProductDetailPage: Cargando variante con ID: ${id}`);
       setIsLoading(true);
       try {
-        const data = await productService.getProductById(Number(id));
-        console.log('✅ ProductDetailPage: Producto cargado:', data);
-        setProduct(data);
+        // Cargar datos de la variante específica
+        const variant = await productService.getVariantById(Number(id));
+        console.log('✅ ProductDetailPage: Variante cargada:', variant);
         
-        if (!data) {
-          console.error('⚠️ ProductDetailPage: El servicio devolvió null');
+        if (!variant) {
+          console.error('⚠️ ProductDetailPage: La variante no existe');
+          setProduct(null);
+          return;
         }
+        
+        // Convertir datos de variante a formato Product para los componentes existentes
+        const images: string[] = [];
+        
+        // Agregar imagen principal primero si existe
+        if (variant.imagen_principal) {
+          const urlPrincipal = variant.imagen_principal.imagen_url || variant.imagen_principal.imagen;
+          if (urlPrincipal) {
+            images.push(urlPrincipal);
+          }
+        }
+        
+        // Agregar imágenes adicionales
+        if (variant.imagenes && Array.isArray(variant.imagenes)) {
+          variant.imagenes.forEach(img => {
+            const url = img.imagen_url || img.imagen;
+            if (url && !images.includes(url)) {
+              images.push(url);
+            }
+          });
+        }
+        
+        // Parsear tallas y colores (pueden venir separados por comas)
+        const sizes = variant.talla ? variant.talla.split(',').map(s => s.trim()) : [];
+        const colors = variant.color ? variant.color.split(',').map(c => c.trim()) : [];
+        
+        const productData: Product = {
+          id: variant.id,
+          name: variant.producto_info.nombre,
+          description: variant.producto_info.descripcion,
+          price: parseFloat(variant.precio_unitario),
+          discount: 0,
+          category: variant.categoria_info.nombre,
+          images: images.length > 0 ? images : ['/placeholder-product.jpg'],
+          sizes: sizes,
+          colors: colors,
+          stock: variant.stock,
+          rating: 4.5,
+          reviews: 0,
+          isNew: false,
+          isFeatured: false,
+        };
+        
+        console.log('✅ ProductDetailPage: Producto mapeado:', productData);
+        setProduct(productData);
+        
       } catch (error) {
         console.error('❌ Error loading product:', error);
         if (error instanceof Error) {
           console.error('💬 Error details:', error.message);
         }
+        setProduct(null);
       } finally {
         setIsLoading(false);
       }

@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import type { Product } from '../../services/productService';
 import { useState } from 'react';
 import FavoriteButton from './FavoriteButton';
-import ProductImage from './ProductImage';
 import ProductDetailModal from './ProductDetailModal';
 import AddToCartModal from './AddToCartModal';
 import { showToast } from '../../utils/toast';
@@ -14,7 +13,6 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const [mainImageUrl, setMainImageUrl] = useState<string>('/placeholder-product.jpg');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAddToCartModal, setShowAddToCartModal] = useState(false);
 
@@ -22,7 +20,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
     ? (Number(product.price) || 0) * (1 - (Number(product.discount) || 0) / 100)
     : (Number(product.price) || 0);
 
-  console.log('🖼️ ProductCard - Producto:', product.name, 'ID:', product.id);
+  // Usar la primera imagen disponible del producto
+  const mainImageUrl = product.images && product.images.length > 0 
+    ? product.images[0] 
+    : '/placeholder-product.jpg';
+
+  console.log('🖼️ ProductCard - Producto:', product.name, 'Imagen:', mainImageUrl);
 
   const handleImageClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -58,16 +61,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
             onClick={handleImageClick}
             className="cursor-pointer group-hover:cursor-zoom-in"
           >
-            <ProductImage
-              productId={product.id}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            <img
+              src={mainImageUrl}
               alt={product.name}
-              onImageLoad={(image) => {
-                console.log('✅ Imagen cargada para producto:', product.name, image.imagen_url);
-                setMainImageUrl(image.imagen_url || '/placeholder-product.jpg');
-              }}
-              onImageError={(error) => {
-                console.error('❌ Error al cargar imagen para producto:', product.name, error);
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={(e) => {
+                console.error('❌ Error al cargar imagen:', mainImageUrl);
+                (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
               }}
             />
           </div>
