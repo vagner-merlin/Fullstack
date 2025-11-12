@@ -34,12 +34,26 @@ const ShopPage = () => {
     const loadProducts = async () => {
       setIsLoading(true);
       try {
+        console.log('🔄 ShopPage: Iniciando carga de productos con filtros:', filters);
+        console.log('🌐 API URL configurada:', import.meta.env.VITE_API_URL || 'http://localhost:8000');
+        
         const response = await productService.getProducts(filters);
+        console.log('✅ ShopPage: Productos cargados exitosamente:', response);
+        console.log('📦 ShopPage: Cantidad de productos:', response.products.length);
+        
+        if (response.products.length > 0) {
+          console.log('🔍 ShopPage: Primer producto:', response.products[0]);
+        }
+        
         setProducts(response.products);
         setTotalPages(response.totalPages);
         setTotal(response.total);
       } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('❌ ShopPage: Error loading products:', error);
+        // Asegurarse de que el estado se actualice incluso con error
+        setProducts([]);
+        setTotalPages(1);
+        setTotal(0);
       } finally {
         setIsLoading(false);
       }

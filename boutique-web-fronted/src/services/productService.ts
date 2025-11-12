@@ -43,19 +43,122 @@ export const productService = {
   // Obtener productos desde Django
   getProducts: async (filters: ProductFilters = {}): Promise<ProductsResponse> => {
     try {
-      const response = await fetch(`${API_URL}/api/productos/productos/`, {
+      console.log('🌐 ProductService: Iniciando llamada a API');
+      console.log('🔗 URL completa:', `${API_URL}/api/productos/`);
+      console.log('📊 Filtros aplicados:', filters);
+      
+      const response = await fetch(`${API_URL}/api/productos/`, {
         headers: { 'Content-Type': 'application/json' },
       });
       
+      console.log('📡 Respuesta del servidor:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+      
       if (!response.ok) {
-        console.error('Error al cargar productos:', response.status);
-        throw new Error('Error al cargar productos');
+        console.error('❌ Error en respuesta del servidor:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url
+        });
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+        console.log('📦 Datos recibidos del backend:', data);
+        console.log('📋 Tipo de datos:', typeof data);
+        console.log('🔑 Propiedades disponibles:', Object.keys(data));
+      } catch (jsonError) {
+        console.error('❌ Error al parsear JSON:', jsonError);
+        const text = await response.text();
+        console.error('📄 Contenido de respuesta:', text);
+        throw new Error('Respuesta del servidor no es JSON válido');
+      }
       
-      // El backend retorna un array directo, no un objeto con products
-      const products = Array.isArray(data) ? data : [];
+      // El backend retorna { success: true, count: X, productos: [...] }
+      const productosBackend = data.productos || [];
+      
+      // Mapear productos del backend al formato del frontend
+      const products: Product[] = productosBackend.map((prod: any) => {
+        console.log('🔍 Mapeando producto:', prod.nombre, prod);
+        
+        // Obtener la primera variante para obtener precio e imágenes
+        const primeraVariante = prod.variantes && prod.variantes.length > 0 ? prod.variantes[0] : null;
+        
+        // Obtener todas las imágenes de todas las variantes
+        const todasImagenes: string[] = [];
+        if (prod.variantes) {
+          prod.variantes.forEach((variante: any) => {
+            console.log('  🔍 Variante:', variante);
+            if (variante.imagenes && Array.isArray(variante.imagenes)) {
+              console.log('    📸 Imágenes de variante:', variante.imagenes);
+              variante.imagenes.forEach((img: any) => {
+                console.log('      🖼️ Imagen individual:', img);
+                // Priorizar imagen_url (desde S3), si no existe usar imagen
+                const urlImagen = img.imagen_url || img.imagen;
+                if (urlImagen) {
+                  todasImagenes.push(urlImagen);
+                  console.log('        ✅ URL agregada:', urlImagen);
+                }
+              });
+            }
+            
+            // También verificar si hay imagen_principal
+            if (variante.imagen_principal) {
+              console.log('    📸 Imagen principal:', variante.imagen_principal);
+              const urlImagenPrincipal = variante.imagen_principal.imagen_url || variante.imagen_principal.imagen;
+              if (urlImagenPrincipal && !todasImagenes.includes(urlImagenPrincipal)) {
+                todasImagenes.unshift(urlImagenPrincipal); // Agregar al inicio
+                console.log('      ✅ Imagen principal agregada al inicio:', urlImagenPrincipal);
+              }
+            }
+          });
+        }
+        
+        console.log('  📸 Total imágenes encontradas:', todasImagenes.length, todasImagenes);
+        
+        // Obtener colores y tallas únicos
+        const colores = prod.variantes 
+          ? [...new Set(prod.variantes.map((v: any) => v.color).filter(Boolean))] as string[]
+          : [];
+        const tallas = prod.variantes 
+          ? [...new Set(prod.variantes.map((v: any) => v.talla).filter(Boolean))] as string[]
+          : [];
+        
+        // Calcular stock total
+        const stockTotal = prod.variantes 
+          ? prod.variantes.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
+          : 0;
+        
+        // Obtener categoría
+        const categoria = prod.categorias && prod.categorias.length > 0 
+          ? prod.categorias[0].nombre 
+          : 'Sin categoría';
+        
+        return {
+          id: prod.id,
+          name: prod.nombre,
+          description: prod.descripcion || '',
+          price: primeraVariante ? primeraVariante.precio_unitario : 0,
+          discount: 0, // El backend no tiene descuento por ahora
+          category: categoria,
+          images: todasImagenes.length > 0 ? todasImagenes : ['/placeholder-product.jpg'],
+          sizes: tallas,
+          colors: colores,
+          stock: stockTotal,
+          rating: 4.5, // Por ahora fijo, se puede calcular desde reseñas
+          reviews: 0, // Por ahora fijo
+          isNew: false, // Puedes calcularlo con fecha_creacion
+          isFeatured: false,
+        };
+      });
+      
+      console.log('✅ Productos mapeados:', products);
       
       return {
         products: products,
@@ -64,7 +167,17 @@ export const productService = {
         totalPages: Math.ceil(products.length / (filters.limit || 12)),
       };
     } catch (error) {
-      console.error('Error en getProducts:', error);
+      console.error('❌ Error en getProducts:', error);
+      
+      if (error instanceof Error) {
+        console.error('🔍 Tipo de error:', error.constructor.name);
+        console.error('💬 Mensaje de error:', error.message);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          console.error('🌐 Error de conexión: Verificar que el servidor Django esté corriendo en ' + API_URL);
+        }
+      }
+      
       // Retornar respuesta vacía en caso de error
       return {
         products: [],
@@ -78,7 +191,7 @@ export const productService = {
   // Obtener producto por ID
   getProductById: async (id: number): Promise<Product | null> => {
     try {
-      const response = await fetch(`${API_URL}/api/productos/productos/${id}/`, {
+      const response = await fetch(`${API_URL}/api/productos/${id}/`, {
         headers: { 'Content-Type': 'application/json' },
       });
       
@@ -87,7 +200,73 @@ export const productService = {
         return null;
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log('📦 Producto individual recibido:', data);
+      
+      // El backend retorna { success: true, producto: {...} }
+      const prod = data.producto || data;
+      
+      // Obtener la primera variante para obtener precio e imágenes
+      const primeraVariante = prod.variantes && prod.variantes.length > 0 ? prod.variantes[0] : null;
+      
+      // Obtener todas las imágenes de todas las variantes
+      const todasImagenes: string[] = [];
+      if (prod.variantes) {
+        prod.variantes.forEach((variante: any) => {
+          if (variante.imagenes && Array.isArray(variante.imagenes)) {
+            variante.imagenes.forEach((img: any) => {
+              // Priorizar imagen_url (desde S3), si no existe usar imagen
+              const urlImagen = img.imagen_url || img.imagen;
+              if (urlImagen) {
+                todasImagenes.push(urlImagen);
+              }
+            });
+          }
+          
+          // También verificar si hay imagen_principal
+          if (variante.imagen_principal) {
+            const urlImagenPrincipal = variante.imagen_principal.imagen_url || variante.imagen_principal.imagen;
+            if (urlImagenPrincipal && !todasImagenes.includes(urlImagenPrincipal)) {
+              todasImagenes.unshift(urlImagenPrincipal); // Agregar al inicio
+            }
+          }
+        });
+      }
+      
+      // Obtener colores y tallas únicos
+      const colores = prod.variantes 
+        ? [...new Set(prod.variantes.map((v: any) => v.color).filter(Boolean))] as string[]
+        : [];
+      const tallas = prod.variantes 
+        ? [...new Set(prod.variantes.map((v: any) => v.talla).filter(Boolean))] as string[]
+        : [];
+      
+      // Calcular stock total
+      const stockTotal = prod.variantes 
+        ? prod.variantes.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
+        : 0;
+      
+      // Obtener categoría
+      const categoria = prod.categorias && prod.categorias.length > 0 
+        ? prod.categorias[0].nombre 
+        : 'Sin categoría';
+      
+      return {
+        id: prod.id,
+        name: prod.nombre,
+        description: prod.descripcion || '',
+        price: primeraVariante ? primeraVariante.precio_unitario : 0,
+        discount: 0,
+        category: categoria,
+        images: todasImagenes.length > 0 ? todasImagenes : ['/placeholder-product.jpg'],
+        sizes: tallas,
+        colors: colores,
+        stock: stockTotal,
+        rating: 4.5,
+        reviews: 0,
+        isNew: false,
+        isFeatured: false,
+      };
     } catch (error) {
       console.error('Error en getProductById:', error);
       return null;
@@ -155,9 +334,14 @@ export const productService = {
       if (!response.ok) return [];
       
       const data = await response.json();
+      console.log('📦 Categorías recibidas:', data);
+      
+      // El backend retorna { success: true, count: X, categorias: [...] }
+      const categorias = data.categorias || [];
+      
       // Extraer nombres de categorías
-      if (Array.isArray(data)) {
-        return data.map((cat: any) => cat.nombre || cat.name);
+      if (Array.isArray(categorias)) {
+        return categorias.map((cat: any) => cat.nombre || cat.name);
       }
       return [];
     } catch (error) {

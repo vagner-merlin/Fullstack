@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .api import (
     ProductoViewSet, CategoriaViewSet, ProductoCategoriaViewSet,
-    ReseñaViewSet, ImagenProductoViewSet, ItemPedidoViewSet, ItemComprasViewSet
+    ReseñaViewSet, ImagenProductoViewSet, ItemPedidoViewSet, ItemComprasViewSet,
+    InventarioViewSet
 )
 from .upload_api import ImageUploadAPIView
 
@@ -14,6 +15,7 @@ router.register(r'reseñas', ReseñaViewSet, basename='reseña')
 router.register(r'imagenes', ImagenProductoViewSet, basename='imagen-producto')
 router.register(r'items-pedido', ItemPedidoViewSet, basename='item-pedido')
 router.register(r'items-compras', ItemComprasViewSet, basename='item-compras')
+router.register(r'inventario', InventarioViewSet, basename='inventario')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Producto, Categoria, ProductoCategoria, reseña, 
-    Imagen_Producto, item_pedido, item_compras
+    Imagen_Producto, item_pedido, item_compras, Inventario
 )
 from app_Cliente.serializers import ClienteSerializer
 from app_compras.serializers import CompraSerializer
@@ -142,7 +142,18 @@ class ProductoCompletoSerializer(serializers.ModelSerializer):
     def get_variantes(self, obj):
         """Obtener todas las variantes del producto"""
         variantes = ProductoCategoria.objects.filter(producto=obj)
-        return ProductoCategoriaSerializer(variantes, many=True).data
+        print(f"🎨 Serializando variantes para {obj.nombre}: {variantes.count()} variantes")
+        
+        serialized_data = ProductoCategoriaSerializer(variantes, many=True).data
+        
+        # Debug de imágenes
+        for i, variante_data in enumerate(serialized_data):
+            imagenes = variante_data.get('imagenes', [])
+            print(f"   Variante {i+1}: {len(imagenes)} imágenes")
+            for j, img in enumerate(imagenes):
+                print(f"     Imagen {j+1}: {img.get('imagen_url', 'Sin URL')}")
+        
+        return serialized_data
     
     def get_categorias(self, obj):
         """Obtener todas las categorías del producto"""
@@ -177,3 +188,42 @@ class ItemComprasSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("La cantidad debe ser mayor a 0")
         return value
+
+class InventarioSerializer(serializers.ModelSerializer):
+    """Serializer para inventario de productos"""
+    producto_info = ProductoBasicoSerializer(source='Producto_id', read_only=True)
+    
+    class Meta:
+        model = Inventario
+        fields = [
+            'id', 'cantidad_entradas', 'stock_minimo', 'stock_maximo',
+            'ubicacion_almacen', 'ultima_actualizacion', 'Producto_id', 'producto_info'
+        ]
+        read_only_fields = ['ultima_actualizacion']
+    
+    def validate_cantidad_entradas(self, value):
+        if value < 0:
+            raise serializers.ValidationError("La cantidad de entradas no puede ser negativa")
+        return value
+    
+    def validate_stock_minimo(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El stock mínimo no puede ser negativo")
+        return value
+    
+    def validate_stock_maximo(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El stock máximo no puede ser negativo")
+        return value
+    
+    def validate(self, data):
+        """Validar que el stock mínimo sea menor que el stock máximo"""
+        stock_minimo = data.get('stock_minimo')
+        stock_maximo = data.get('stock_maximo')
+        
+        if stock_minimo and stock_maximo and stock_minimo > stock_maximo:
+            raise serializers.ValidationError({
+                'stock_minimo': 'El stock mínimo no puede ser mayor que el stock máximo'
+            })
+        
+        return data

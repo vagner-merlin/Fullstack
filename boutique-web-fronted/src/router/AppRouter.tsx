@@ -30,11 +30,11 @@ import { ImagesPage } from '../pages/admin/ImagesPage';
 import { CategoriesPage } from '../pages/admin/CategoriesPage';
 import { OrdersPageAdmin } from '../pages/admin/OrdersPageAdmin';
 import { ProvidersPage } from '../pages/admin/ProvidersPage';
-import { InventoryPage } from '../pages/admin/InventoryPage';
 import { EmployeesPage } from '../pages/admin/EmployeesPage';
 import { ClientsPage } from '../pages/admin/ClientsPage';
 import { ProfilePageAdmin } from '../pages/admin/ProfilePageAdmin';
 import { AIAnalyticsPage } from '../pages/admin/AIAnalyticsPage';
+import { InventoryPage } from '../pages/admin/InventoryPage';
 
 // Seller Pages
 import { SellerLayout } from '../components/seller/SellerLayout';
@@ -69,7 +69,6 @@ const AppRouter = () => {
       <Route path="/auth/complete-profile" element={<CompleteProfilePage />} />
 
       {/* Placeholder routes - to be implemented */}
-      <Route path="/orders" element={<Navigate to="/" replace />} />
       <Route path="/contact" element={<Navigate to="/" replace />} />
       <Route path="/about" element={<Navigate to="/" replace />} />
       <Route path="/shipping" element={<Navigate to="/" replace />} />
@@ -91,9 +90,9 @@ const AppRouter = () => {
                 <Route path="variants" element={<VariantsPage />} />
                 <Route path="images" element={<ImagesPage />} />
                 <Route path="categories" element={<CategoriesPage />} />
+                <Route path="inventory" element={<InventoryPage />} />
                 <Route path="orders" element={<OrdersPageAdmin />} />
                 <Route path="providers" element={<ProvidersPage />} />
-                <Route path="inventory" element={<InventoryPage />} />
                 <Route path="employees" element={<EmployeesPage />} />
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="profile" element={<ProfilePageAdmin />} />

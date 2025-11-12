@@ -11,10 +11,18 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const finalPrice = product.discount
-    ? product.price * (1 - product.discount / 100)
-    : product.price;
+    ? (Number(product.price) || 0) * (1 - (Number(product.discount) || 0) / 100)
+    : (Number(product.price) || 0);
+
+  // Obtener la imagen principal o usar placeholder
+  const mainImage = product.images && product.images.length > 0 
+    ? product.images[0] 
+    : '/placeholder-product.jpg';
+
+  console.log('🖼️ ProductCard - Producto:', product.name, 'Imagen:', mainImage);
 
   return (
     <motion.div
@@ -26,16 +34,29 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <Link to={`/product/${product.id}`} className="block">
         {/* Image Container */}
         <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-          {!imageLoaded && (
+          {(!imageLoaded || imageError) && (
             <div className="absolute inset-0 bg-gradient-to-br from-boutique-beige to-boutique-rose-light animate-pulse" />
           )}
           <img
-            src={product.images[0]}
+            src={mainImage}
             alt={product.name}
             className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
+              imageLoaded && !imageError ? 'opacity-100' : 'opacity-0'
             }`}
-            onLoad={() => setImageLoaded(true)}
+            onLoad={() => {
+              console.log('✅ Imagen cargada:', mainImage);
+              setImageLoaded(true);
+              setImageError(false);
+            }}
+            onError={(e) => {
+              console.error('❌ Error al cargar imagen:', mainImage);
+              setImageError(true);
+              // Intentar cargar placeholder como fallback
+              const img = e.target as HTMLImageElement;
+              if (img.src !== '/placeholder-product.jpg') {
+                img.src = '/placeholder-product.jpg';
+              }
+            }}
             loading="lazy"
           />
 
@@ -62,7 +83,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                   id: product.id,
                   nombre: product.name,
                   precio: product.price,
-                  imagen_principal: product.images[0],
+                  imagen_principal: mainImage,
                   categoria: product.category,
                   stock_disponible: product.stock,
                 }}
@@ -118,23 +139,23 @@ const ProductCard = ({ product }: ProductCardProps) => {
                   ${finalPrice.toFixed(2)}
                 </span>
                 <span className="text-sm font-poppins text-gray-400 line-through">
-                  ${product.price.toFixed(2)}
+                  ${(Number(product.price) || 0).toFixed(2)}
                 </span>
               </>
             ) : (
               <span className="text-lg font-raleway font-bold text-boutique-black-matte">
-                ${product.price.toFixed(2)}
+                ${(Number(product.price) || 0).toFixed(2)}
               </span>
             )}
           </div>
 
           {/* Stock Info */}
-          {product.stock < 5 && product.stock > 0 && (
+          {(Number(product.stock) || 0) < 5 && (Number(product.stock) || 0) > 0 && (
             <p className="text-xs text-orange-500 font-poppins mt-2">
-              ¡Solo quedan {product.stock}!
+              ¡Solo quedan {Number(product.stock) || 0}!
             </p>
           )}
-          {product.stock === 0 && (
+          {(Number(product.stock) || 0) === 0 && (
             <p className="text-xs text-red-500 font-poppins font-semibold mt-2">
               Agotado
             </p>

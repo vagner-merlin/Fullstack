@@ -51,3 +51,12 @@ class item_compras(models.Model):
     compra = models.ForeignKey(compra, on_delete=models.CASCADE)
     cantidad = models.IntegerField()
 
+class Inventario (models.Model):
+    cantidad_entradas = models.IntegerField()
+    stock_minimo = models.IntegerField()
+    stock_maximo = models.IntegerField()
+    ubicacion_almacen = models.CharField(max_length=100)
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+    Producto_id = models.ForeignKey(Producto, on_delete=models.CASCADE) 
+
+    

@@ -29,7 +29,9 @@ export const authService = {
     }
     
     const data = await response.json();
+    console.log('🔐 Respuesta de login:', data);
     
+    // Obtener datos del usuario
     const userResponse = await fetch(`${API_URL}/api/users/users/${data.user_id}/`, {
       headers: { 
         'Authorization': `Token ${data.token}`,
@@ -42,12 +44,58 @@ export const authService = {
     }
     
     const userData = await userResponse.json();
+    console.log('👤 Datos del usuario:', userData);
     
-    let role: UserRole = 'client';
-    if (userData.is_superuser) {
-      role = 'superadmin';
-    } else if (userData.is_staff) {
-      role = 'admin';
+    // Intentar obtener los grupos del usuario
+    let role: UserRole = 'client'; // Por defecto es cliente
+    
+    try {
+      const groupsResponse = await fetch(`${API_URL}/api/users/user-groups/${data.user_id}/`, {
+        headers: { 
+          'Authorization': `Token ${data.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (groupsResponse.ok) {
+        const groupsData = await groupsResponse.json();
+        console.log('👥 Grupos del usuario:', groupsData);
+        
+        // Determinar rol basado en los grupos
+        if (groupsData.groups && Array.isArray(groupsData.groups)) {
+          const groupNames = groupsData.groups.map((g: any) => g.name?.toLowerCase());
+          
+          if (userData.is_superuser || groupNames.includes('superadmin')) {
+            role = 'superadmin';
+          } else if (userData.is_staff || groupNames.includes('admin') || groupNames.includes('administrador')) {
+            role = 'admin';
+          } else if (groupNames.includes('seller') || groupNames.includes('vendedor')) {
+            role = 'seller';
+          } else if (groupNames.includes('client') || groupNames.includes('cliente')) {
+            role = 'client';
+          }
+          
+          console.log('✅ Rol detectado:', role);
+        }
+      } else {
+        console.warn('⚠️ No se pudieron obtener los grupos del usuario, usando rol por defecto');
+        
+        // Fallback a la lógica anterior si no hay endpoint de grupos
+        if (userData.is_superuser) {
+          role = 'superadmin';
+        } else if (userData.is_staff) {
+          role = 'admin';
+        }
+      }
+    } catch (groupError) {
+      console.error('❌ Error al obtener grupos:', groupError);
+      
+      // Fallback a la lógica anterior
+      if (userData.is_superuser) {
+        role = 'superadmin';
+      } else if (userData.is_staff) {
+        role = 'admin';
+      }
     }
     
     const user: User = {
@@ -60,6 +108,8 @@ export const authService = {
       is_staff: userData.is_staff || false,
       is_active: userData.is_active !== undefined ? userData.is_active : true,
     };
+    
+    console.log('✅ Usuario autenticado:', user);
     
     return {
       access_token: data.token,

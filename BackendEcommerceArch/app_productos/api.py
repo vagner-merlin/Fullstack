@@ -1,16 +1,16 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, F
 from .models import (
     Producto, Categoria, ProductoCategoria, reseña, 
-    Imagen_Producto, item_pedido, item_compras
+    Imagen_Producto, item_pedido, item_compras, Inventario
 )
 from .serializers import (
     ProductoBasicoSerializer, ProductoCompletoSerializer,
     CategoriaSerializer, ProductoCategoriaSerializer, ProductoCategoriaCreateSerializer,
     ReseñaSerializer, ReseñaCreateSerializer, ImagenProductoSerializer,
-    ItemPedidoSerializer, ItemComprasSerializer
+    ItemPedidoSerializer, ItemComprasSerializer, InventarioSerializer
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -39,13 +39,32 @@ class ProductoViewSet(viewsets.ModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """Listar productos del catálogo"""
+        print("🔍 API: Iniciando listado de productos...")
+        
         queryset = self.get_queryset()
-        serializer = ProductoBasicoSerializer(queryset, many=True)  # Vista básica para listado
+        print(f"📦 API: Productos en queryset: {queryset.count()}")
+        
+        # Debug: Mostrar productos activos
+        total_productos = Producto.objects.count()
+        productos_activos = Producto.objects.filter(activo=True).count()
+        print(f"📊 API: Total productos en DB: {total_productos}")
+        print(f"✅ API: Productos activos en DB: {productos_activos}")
+        
+        # Mostrar algunos productos para debug
+        for producto in queryset[:3]:  # Solo primeros 3
+            print(f"   - {producto.nombre} (ID: {producto.id}, Activo: {producto.activo})")
+            variantes = producto.productocategoria_set.count()
+            print(f"     Variantes: {variantes}")
+        
+        serializer = ProductoCompletoSerializer(queryset, many=True)  # Vista completa con variantes e imágenes
+        data = serializer.data
+        
+        print(f"📤 API: Datos serializados: {len(data)} productos")
         
         return Response({
             'success': True,
             'count': queryset.count(),
-            'productos': serializer.data
+            'productos': data
         })
     
     def retrieve(self, request, *args, **kwargs):
@@ -289,3 +308,111 @@ class ItemComprasViewSet(viewsets.ModelViewSet):
     queryset = item_compras.objects.all()
     serializer_class = ItemComprasSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+class InventarioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para inventario - CRUD completo para administración
+    """
+    queryset = Inventario.objects.all()
+    serializer_class = InventarioSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filtrar inventario con parámetros"""
+        queryset = Inventario.objects.select_related('Producto_id').all()
+        
+        # Filtro por producto
+        producto_id = self.request.query_params.get('producto', None)
+        if producto_id:
+            queryset = queryset.filter(Producto_id_id=producto_id)
+        
+        # Filtro por ubicación
+        ubicacion = self.request.query_params.get('ubicacion', None)
+        if ubicacion:
+            queryset = queryset.filter(ubicacion_almacen__icontains=ubicacion)
+        
+        # Filtro por stock bajo (cantidad_entradas menor que stock_minimo)
+        stock_bajo = self.request.query_params.get('stock_bajo', None)
+        if stock_bajo == 'true':
+            queryset = queryset.filter(cantidad_entradas__lt=F('stock_minimo'))
+        
+        return queryset.order_by('-ultima_actualizacion')
+    
+    def list(self, request, *args, **kwargs):
+        """Listar inventario con información del producto"""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        
+        return Response({
+            'success': True,
+            'count': queryset.count(),
+            'inventario': serializer.data
+        })
+    
+    def create(self, request, *args, **kwargs):
+        """Crear registro de inventario"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        return Response({
+            'success': True,
+            'message': 'Registro de inventario creado exitosamente',
+            'inventario': serializer.data
+        }, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        """Actualizar registro de inventario"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        return Response({
+            'success': True,
+            'message': 'Registro de inventario actualizado exitosamente',
+            'inventario': serializer.data
+        })
+    
+    def destroy(self, request, *args, **kwargs):
+        """Eliminar registro de inventario"""
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        
+        return Response({
+            'success': True,
+            'message': 'Registro de inventario eliminado exitosamente'
+        }, status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=['get'])
+    def stock_bajo(self, request):
+        """Obtener productos con stock bajo (cantidad_entradas < stock_minimo)"""
+        inventario_bajo = self.queryset.filter(cantidad_entradas__lt=F('stock_minimo'))
+        serializer = self.get_serializer(inventario_bajo, many=True)
+        
+        return Response({
+            'success': True,
+            'count': inventario_bajo.count(),
+            'inventario_bajo': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def alertas(self, request):
+        """Obtener alertas de inventario (stock bajo o por encima del máximo)"""
+        stock_bajo = self.queryset.filter(cantidad_entradas__lt=F('stock_minimo'))
+        stock_alto = self.queryset.filter(cantidad_entradas__gt=F('stock_maximo'))
+        
+        return Response({
+            'success': True,
+            'alertas': {
+                'stock_bajo': {
+                    'count': stock_bajo.count(),
+                    'items': self.get_serializer(stock_bajo, many=True).data
+                },
+                'stock_alto': {
+                    'count': stock_alto.count(),
+                    'items': self.get_serializer(stock_alto, many=True).data
+                }
+            }
+        })

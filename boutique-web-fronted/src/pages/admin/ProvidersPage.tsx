@@ -1,44 +1,45 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, Search, Truck, Mail, Phone, MapPin, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Truck, Mail, Phone, MapPin } from 'lucide-react';
 import { showToast } from '../../utils/toast';
-
-interface Provider {
-  id: number;
-  nombre: string;
-  contacto: string;
-  email: string;
-  telefono: string;
-  direccion: string;
-  productos: string;
-  created_at: string;
-}
+import type { Provider, CreateProviderData } from '../../services/admin/providerService';
+import { 
+  getAllProviders, 
+  createProvider, 
+  updateProvider, 
+  deleteProvider,
+  searchProviders
+} from '../../services/admin/providerService';
 
 export const ProvidersPage = () => {
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [filteredProviders, setFilteredProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateProviderData>({
     nombre: '',
-    contacto: '',
+    nombre_contacto: '',
     email: '',
     telefono: '',
-    direccion: '',
-    productos: ''
+    direccion: ''
   });
 
   useEffect(() => {
     loadProviders();
   }, []);
 
-  const loadProviders = () => {
+  useEffect(() => {
+    handleSearch();
+  }, [searchTerm, providers]);
+
+  const loadProviders = async () => {
     try {
       setLoading(true);
-      const providersData = localStorage.getItem('providers');
-      const allProviders: Provider[] = providersData ? JSON.parse(providersData) : [];
-      setProviders(allProviders);
+      const data = await getAllProviders();
+      setProviders(data);
+      setFilteredProviders(data);
     } catch (error) {
       console.error('Error al cargar proveedores:', error);
       showToast.error('Error al cargar proveedores');
@@ -47,7 +48,20 @@ export const ProvidersPage = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSearch = async () => {
+    try {
+      if (!searchTerm.trim()) {
+        setFilteredProviders(providers);
+        return;
+      }
+      const results = await searchProviders(searchTerm);
+      setFilteredProviders(results);
+    } catch (error) {
+      console.error('Error en búsqueda:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nombre.trim() || !formData.email.trim()) {
@@ -56,23 +70,11 @@ export const ProvidersPage = () => {
     }
 
     try {
-      const providersData = localStorage.getItem('providers');
-      const allProviders: Provider[] = providersData ? JSON.parse(providersData) : [];
-
       if (editingProvider) {
-        const updatedProviders = allProviders.map(p =>
-          p.id === editingProvider.id ? { ...editingProvider, ...formData } : p
-        );
-        localStorage.setItem('providers', JSON.stringify(updatedProviders));
+        await updateProvider(editingProvider.id, formData);
         showToast.success('Proveedor actualizado correctamente');
       } else {
-        const newProvider: Provider = {
-          id: Date.now(),
-          ...formData,
-          created_at: new Date().toISOString()
-        };
-        allProviders.push(newProvider);
-        localStorage.setItem('providers', JSON.stringify(allProviders));
+        await createProvider(formData);
         showToast.success('Proveedor creado correctamente');
       }
 
@@ -84,14 +86,11 @@ export const ProvidersPage = () => {
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('¿Estás seguro de eliminar este proveedor?')) return;
 
     try {
-      const providersData = localStorage.getItem('providers');
-      const allProviders: Provider[] = providersData ? JSON.parse(providersData) : [];
-      const updatedProviders = allProviders.filter(p => p.id !== id);
-      localStorage.setItem('providers', JSON.stringify(updatedProviders));
+      await deleteProvider(id);
       showToast.success('Proveedor eliminado correctamente');
       loadProviders();
     } catch (error) {
@@ -104,11 +103,10 @@ export const ProvidersPage = () => {
     setEditingProvider(null);
     setFormData({
       nombre: '',
-      contacto: '',
+      nombre_contacto: '',
       email: '',
       telefono: '',
-      direccion: '',
-      productos: ''
+      direccion: ''
     });
     setShowModal(true);
   };
@@ -117,11 +115,10 @@ export const ProvidersPage = () => {
     setEditingProvider(provider);
     setFormData({
       nombre: provider.nombre,
-      contacto: provider.contacto,
+      nombre_contacto: provider.nombre_contacto,
       email: provider.email,
       telefono: provider.telefono,
-      direccion: provider.direccion,
-      productos: provider.productos
+      direccion: provider.direccion
     });
     setShowModal(true);
   };
@@ -130,12 +127,6 @@ export const ProvidersPage = () => {
     setShowModal(false);
     setEditingProvider(null);
   };
-
-  const filteredProviders = providers.filter(p =>
-    p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.contacto.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (loading) {
     return (
@@ -239,11 +230,10 @@ export const ProvidersPage = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proveedor</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Productos</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
@@ -272,7 +262,7 @@ export const ProvidersPage = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                    {provider.contacto || '-'}
+                    {provider.nombre_contacto || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2 text-gray-600">
@@ -286,23 +276,19 @@ export const ProvidersPage = () => {
                       {provider.telefono || '-'}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Package className="h-4 w-4 text-gray-400" />
-                      <span className="line-clamp-1">{provider.productos || '-'}</span>
-                    </div>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openEditModal(provider)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar proveedor"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(provider.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar proveedor"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -346,18 +332,21 @@ export const ProvidersPage = () => {
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
+                    placeholder="Nombre de la empresa"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Persona de Contacto
+                    Persona de Contacto *
                   </label>
                   <input
                     type="text"
-                    value={formData.contacto}
-                    onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                    value={formData.nombre_contacto}
+                    onChange={(e) => setFormData({ ...formData, nombre_contacto: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                    placeholder="Nombre del contacto"
                   />
                 </div>
 
@@ -371,42 +360,34 @@ export const ProvidersPage = () => {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
+                    placeholder="correo@ejemplo.com"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Teléfono
+                    Teléfono *
                   </label>
                   <input
                     type="tel"
                     value={formData.telefono}
                     onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dirección
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.direccion}
-                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                    placeholder="+591 12345678"
                   />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Productos que Suministra
+                    Dirección *
                   </label>
                   <textarea
-                    value={formData.productos}
-                    onChange={(e) => setFormData({ ...formData, productos: e.target.value })}
+                    value={formData.direccion}
+                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                     rows={3}
-                    placeholder="Ej: Ropa de mujer, accesorios, zapatos..."
+                    required
+                    placeholder="Dirección completa del proveedor"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>

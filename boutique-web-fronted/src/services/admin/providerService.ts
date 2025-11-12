@@ -1,66 +1,66 @@
 /**
  * Servicio de Gestión de Proveedores
+ * Conectado con API Backend Django
  */
 
+import apiClient from '../apiClient';
+
+// Interfaz del modelo Proveedor del backend
 export interface Provider {
   id: number;
   nombre: string;
-  empresa: string;
-  ruc?: string;
+  nombre_contacto: string;
   telefono: string;
   email: string;
-  direccion?: string;
-  ciudad?: string;
-  pais: string;
-  productos_suministrados?: string[];
-  activo: boolean;
-  notas?: string;
-  created_at: string;
-  updated_at: string;
+  direccion: string;
 }
 
+// Interfaz para crear/actualizar proveedor
 export interface CreateProviderData {
   nombre: string;
-  empresa: string;
-  ruc?: string;
+  nombre_contacto: string;
   telefono: string;
   email: string;
-  direccion?: string;
-  ciudad?: string;
-  pais: string;
-  productos_suministrados?: string[];
-  activo?: boolean;
-  notas?: string;
+  direccion: string;
 }
 
-const PROVIDERS_KEY = 'boutique_providers';
+// Respuesta de la API para lista de proveedores
+interface ProvidersListResponse {
+  success: boolean;
+  count: number;
+  proveedores: Provider[];
+}
+
+// Respuesta de la API para un solo proveedor
+interface ProviderResponse {
+  success: boolean;
+  proveedor: Provider;
+  message?: string;
+}
 
 /**
  * Obtiene todos los proveedores
  */
 export const getAllProviders = async (): Promise<Provider[]> => {
   try {
-    const providersStr = localStorage.getItem(PROVIDERS_KEY);
-    if (!providersStr) {
-      return [];
-    }
-    return JSON.parse(providersStr);
+    const response = await apiClient.get<ProvidersListResponse>('/compras/proveedores/');
+    return response.data.proveedores || [];
   } catch (error) {
     console.error('Error al obtener proveedores:', error);
-    return [];
+    throw error;
   }
 };
 
 /**
  * Obtiene un proveedor por ID
  */
-export const getProviderById = async (id: number): Promise<Provider | null> => {
+export const getProviderById = async (id: number): Promise<Provider> => {
   try {
-    const providers = await getAllProviders();
-    return providers.find(p => p.id === id) || null;
+    const response = await apiClient.get<ProviderResponse>(`/compras/proveedores/${id}/`);
+    return response.data.proveedor;
   } catch (error) {
     console.error('Error al obtener proveedor:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -69,20 +69,8 @@ export const getProviderById = async (id: number): Promise<Provider | null> => {
  */
 export const createProvider = async (data: CreateProviderData): Promise<Provider> => {
   try {
-    const providers = await getAllProviders();
-    
-    const newProvider: Provider = {
-      id: Date.now(),
-      ...data,
-      activo: data.activo !== undefined ? data.activo : true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    const updatedProviders = [...providers, newProvider];
-    localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updatedProviders));
-    
-    return newProvider;
+    const response = await apiClient.post<ProviderResponse>('/compras/proveedores/', data);
+    return response.data.proveedor;
   } catch (error) {
     console.error('Error al crear proveedor:', error);
     throw error;
@@ -97,23 +85,24 @@ export const updateProvider = async (
   data: Partial<CreateProviderData>
 ): Promise<Provider> => {
   try {
-    const providers = await getAllProviders();
-    const index = providers.findIndex(p => p.id === id);
-    
-    if (index === -1) {
-      throw new Error('Proveedor no encontrado');
-    }
-    
-    const updatedProvider: Provider = {
-      ...providers[index],
-      ...data,
-      updated_at: new Date().toISOString(),
-    };
-    
-    providers[index] = updatedProvider;
-    localStorage.setItem(PROVIDERS_KEY, JSON.stringify(providers));
-    
-    return updatedProvider;
+    const response = await apiClient.put<ProviderResponse>(`/compras/proveedores/${id}/`, data);
+    return response.data.proveedor;
+  } catch (error) {
+    console.error('Error al actualizar proveedor:', error);
+    throw error;
+  }
+};
+
+/**
+ * Actualiza parcialmente un proveedor
+ */
+export const patchProvider = async (
+  id: number,
+  data: Partial<CreateProviderData>
+): Promise<Provider> => {
+  try {
+    const response = await apiClient.patch<ProviderResponse>(`/compras/proveedores/${id}/`, data);
+    return response.data.proveedor;
   } catch (error) {
     console.error('Error al actualizar proveedor:', error);
     throw error;
@@ -125,9 +114,7 @@ export const updateProvider = async (
  */
 export const deleteProvider = async (id: number): Promise<void> => {
   try {
-    const providers = await getAllProviders();
-    const filteredProviders = providers.filter(p => p.id !== id);
-    localStorage.setItem(PROVIDERS_KEY, JSON.stringify(filteredProviders));
+    await apiClient.delete(`/compras/proveedores/${id}/`);
   } catch (error) {
     console.error('Error al eliminar proveedor:', error);
     throw error;
@@ -135,14 +122,24 @@ export const deleteProvider = async (id: number): Promise<void> => {
 };
 
 /**
- * Obtiene proveedores activos
+ * Busca proveedores por nombre
  */
-export const getActiveProviders = async (): Promise<Provider[]> => {
+export const searchProviders = async (searchTerm: string): Promise<Provider[]> => {
   try {
     const providers = await getAllProviders();
-    return providers.filter(p => p.activo);
+    if (!searchTerm.trim()) {
+      return providers;
+    }
+    
+    const term = searchTerm.toLowerCase();
+    return providers.filter(
+      p => 
+        p.nombre.toLowerCase().includes(term) ||
+        p.nombre_contacto.toLowerCase().includes(term) ||
+        p.email.toLowerCase().includes(term)
+    );
   } catch (error) {
-    console.error('Error al obtener proveedores activos:', error);
+    console.error('Error al buscar proveedores:', error);
     return [];
   }
 };
